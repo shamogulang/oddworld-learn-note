@@ -34,6 +34,38 @@ kubeadm join 172.29.98.73:6443 --token abcdef.0123456789abcdef \
 
 
 
+## 2、DashBoard
+
+获取对应的dashboard的yaml
+
+wget  https://raw.githubusercontent.com/kubernetes/dashboard/v2.2.0/aio/deploy/recommended.yaml
+
+打开文件，修改其中几个地方
+
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  type: NodePort  #这个时加的
+  ports:
+    - port: 443
+      targetPort: 8443
+      nodePort: 30009  #这个时加的
+  selector:
+    k8s-app: kubernetes-dashboard
+```
+
+
+
+
+
+
+
 ## 2、kubectl命令
 
 2.1、资源管理方式
@@ -105,4 +137,26 @@ spec:
 如果想在其他节点也使用kubectl 命名，那么需要：
 
 scp -r  ~/.kube  nodehostname:  ~/
+
+
+
+## 3、核心的内容
+
+### 3.1、namespace
+
+
+
+### 3.2、Pod
+
+
+
+### 3.3、Label
+
+
+
+### 3.4、Deployment
+
+
+
+### 3.5、Service
 
