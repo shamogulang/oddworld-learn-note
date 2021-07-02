@@ -379,10 +379,6 @@ No resources found in dev namespace.  我们这里是没有pod控制器的，所
 
 
 
-
-
-
-
 ### 3.3、Label
 
 
@@ -392,4 +388,107 @@ No resources found in dev namespace.  我们这里是没有pod控制器的，所
 
 
 ### 3.5、Service
+
+首先创建服务：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: dev
+spec:
+  replicas: 3
+  selector: 
+    mathLable:
+      run: nginx
+  template:
+    metadata:
+      labels:
+        run: nginx
+      spec:
+        containers:
+        - image: nginx
+          ports:
+          - containerPort: 80
+            protocol: TCP
+```
+
+
+
+pod会因为pod自身出现问题会重启或者重新创建然后导致ip变化，那么对应外部访问就不太友好。
+
+pod还因为用的是集群内部的ip，所以不能为外部访问。
+
+此时要通过service做一层处理，然后service和控制器的标签关联，然后关联到控制器控制管理的pod。
+
+那么就可以通过范文service来访问pod。同时还提供了负载均衡的能力。
+
+将上述部署到deployment控制器的几个pod，通过service暴露出去：
+
+```shell
+kubectl get deploy -n dev
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3/3     3            3           11m
+kubectl expose deploy nginx-deployment --name=svc-nginx --type=ClusterIP --port=80 --target-port=80 -n dev
+service/svc-nginx exposed  #可以看到服务已经暴露
+
+kubectl get service -n dev -o wide   #查看对应的service
+NAME        TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE    SELECTOR
+svc-nginx   ClusterIP   10.97.88.48   <none>        80/TCP    2m9s   app=nginx
+
+不过这种只是暴露到集群内部，如果要暴露到集群外部，那么需要将--type改成NodePort的方式
+
+kubectl expose deploy nginx-deployment --name=svc-nginx2 --type=NodePort --port=80 --target-port=80 -n dev
+service/svc-nginx2 exposed
+
+然后可以通过:
+[root@k8s-01 deployment]# kubectl get service -n dev -o wide
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE    SELECTOR
+svc-nginx    ClusterIP   10.97.88.48     <none>        80/TCP         5m3s   app=nginx
+svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   41s    app=nginx
+```
+
+
+
+查看外部访问：外网IP:31491
+
+![image-20210702115415593](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210702115415593.png)
+
+```shell
+kubectl delete service svc-nginx -n dev #删除服务
+service "svc-nginx" deleted
+```
+
+通过配置文件的方式：svc.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+   name: svc-nginx
+   namespace: dev
+spec:
+   ports:
+   - port: 80
+     protocol: TCP
+     targetPort: 80
+   selector:
+       run: nginx
+   type: ClusterIP
+```
+
+然后执行：
+
+```yaml
+kubectl  apply -f  svc.yaml  
+
+kubectl get service -n dev #查看dev命名空间内的service
+
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+svc-nginx    ClusterIP   10.98.39.83     <none>        80/TCP         7s
+svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   3h8m
+```
+
+
 
