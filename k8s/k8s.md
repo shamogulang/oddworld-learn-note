@@ -379,6 +379,1041 @@ No resources found in dev namespace.  我们这里是没有pod控制器的，所
 
 
 
+#### 3.2.1、pod的理论
+
+pod里面的容器有两种类型，一种是根容器Pause；一种是用户容器,可以有多个。
+
+根容器的作用：
+
+​       用来评估整个pod内部的容器的健康状态。
+
+​       提供ip给pod内的其他容器共享，用于他们的通讯。（如果是其他pod之间的通讯，用的flannel）
+
+
+
+资源清单：就是yaml的配置
+
+```shell
+kubectl explain pod   #下面就是资源清单列表能配置的选项
+ 
+KIND:     Pod
+VERSION:  v1
+
+DESCRIPTION:
+     Pod is a collection of containers that can run on a host. This resource is
+     created by clients and scheduled onto hosts.
+
+FIELDS:
+   apiVersion	<string>   # 版本信息，版本号必须是：kubectl api-versions可以查到的
+     APIVersion defines the versioned schema of this representation of an
+     object. Servers should convert recognized schemas to the latest internal
+     value, and may reject unrecognized values. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+   kind	<string>  # 类型，必须是： kubectl api-resources可以查到的
+     Kind is a string value representing the REST resource this object
+     represents. Servers may infer this from the endpoint the client submits
+     requests to. Cannot be updated. In CamelCase. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+   metadata	<Object>   # 资源标识和说明
+     Standard object's metadata. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+   spec	<Object>   # 对各种资源的描述，是最重要的部分
+     Specification of the desired behavior of the pod. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+   status	<Object>  # 各种状态信息
+     Most recently observed status of the pod. This data may not be up to date.
+     Populated by the system. Read-only. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+#上面的是一级属性，如果要看后续的可以一直通过.的方式进行查看
+kubectl explain pod.status
+```
+
+
+
+> *上述的所有配置中，spec是最重要的*
+
+```shell
+kubectl  explain pod.spec
+KIND:     Pod
+VERSION:  v1
+
+RESOURCE: spec <Object>
+
+DESCRIPTION:
+     Specification of the desired behavior of the pod. More info:
+     https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+     PodSpec is a description of a pod.
+
+FIELDS:
+   activeDeadlineSeconds	<integer>
+     Optional duration in seconds the pod may be active on the node relative to
+     StartTime before the system will actively try to mark it failed and kill
+     associated containers. Value must be a positive integer.
+
+   affinity	<Object>
+     If specified, the pod's scheduling constraints
+
+   automountServiceAccountToken	<boolean>
+     AutomountServiceAccountToken indicates whether a service account token
+     should be automatically mounted.
+
+   containers	<[]Object> -required-
+     List of containers belonging to the pod. Containers cannot currently be
+     added or removed. There must be at least one container in a Pod. Cannot be
+     updated.
+
+   dnsConfig	<Object>
+     Specifies the DNS parameters of a pod. Parameters specified here will be
+     merged to the generated DNS configuration based on DNSPolicy.
+
+   dnsPolicy	<string>
+     Set DNS policy for the pod. Defaults to "ClusterFirst". Valid values are
+     'ClusterFirstWithHostNet', 'ClusterFirst', 'Default' or 'None'. DNS
+     parameters given in DNSConfig will be merged with the policy selected with
+     DNSPolicy. To have DNS options set along with hostNetwork, you have to
+     specify DNS policy explicitly to 'ClusterFirstWithHostNet'.
+
+   enableServiceLinks	<boolean>
+     EnableServiceLinks indicates whether information about services should be
+     injected into pod's environment variables, matching the syntax of Docker
+     links. Optional: Defaults to true.
+
+   ephemeralContainers	<[]Object>
+     List of ephemeral containers run in this pod. Ephemeral containers may be
+     run in an existing pod to perform user-initiated actions such as debugging.
+     This list cannot be specified when creating a pod, and it cannot be
+     modified by updating the pod spec. In order to add an ephemeral container
+     to an existing pod, use the pod's ephemeralcontainers subresource. This
+     field is alpha-level and is only honored by servers that enable the
+     EphemeralContainers feature.
+
+   hostAliases	<[]Object>
+     HostAliases is an optional list of hosts and IPs that will be injected into
+     the pod's hosts file if specified. This is only valid for non-hostNetwork
+     pods.
+
+   hostIPC	<boolean>
+     Use the host's ipc namespace. Optional: Default to false.
+
+   hostNetwork	<boolean>
+     Host networking requested for this pod. Use the host's network namespace.
+     If this option is set, the ports that will be used must be specified.
+     Default to false.
+
+   hostPID	<boolean>
+     Use the host's pid namespace. Optional: Default to false.
+
+   hostname	<string>
+     Specifies the hostname of the Pod If not specified, the pod's hostname will
+     be set to a system-defined value.
+
+   imagePullSecrets	<[]Object>
+     ImagePullSecrets is an optional list of references to secrets in the same
+     namespace to use for pulling any of the images used by this PodSpec. If
+     specified, these secrets will be passed to individual puller
+     implementations for them to use. For example, in the case of docker, only
+     DockerConfig type secrets are honored. More info:
+     https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
+
+   initContainers	<[]Object>
+     List of initialization containers belonging to the pod. Init containers are
+     executed in order prior to containers being started. If any init container
+     fails, the pod is considered to have failed and is handled according to its
+     restartPolicy. The name for an init container or normal container must be
+     unique among all containers. Init containers may not have Lifecycle
+     actions, Readiness probes, Liveness probes, or Startup probes. The
+     resourceRequirements of an init container are taken into account during
+     scheduling by finding the highest request/limit for each resource type, and
+     then using the max of of that value or the sum of the normal containers.
+     Limits are applied to init containers in a similar fashion. Init containers
+     cannot currently be added or removed. Cannot be updated. More info:
+     https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+
+   nodeName	<string>
+     NodeName is a request to schedule this pod onto a specific node. If it is
+     non-empty, the scheduler simply schedules this pod onto that node, assuming
+     that it fits resource requirements.
+
+   nodeSelector	<map[string]string>
+     NodeSelector is a selector which must be true for the pod to fit on a node.
+     Selector which must match a node's labels for the pod to be scheduled on
+     that node. More info:
+     https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+   overhead	<map[string]string>
+     Overhead represents the resource overhead associated with running a pod for
+     a given RuntimeClass. This field will be autopopulated at admission time by
+     the RuntimeClass admission controller. If the RuntimeClass admission
+     controller is enabled, overhead must not be set in Pod create requests. The
+     RuntimeClass admission controller will reject Pod create requests which
+     have the overhead already set. If RuntimeClass is configured and selected
+     in the PodSpec, Overhead will be set to the value defined in the
+     corresponding RuntimeClass, otherwise it will remain unset and treated as
+     zero. More info:
+     https://git.k8s.io/enhancements/keps/sig-node/20190226-pod-overhead.md This
+     field is alpha-level as of Kubernetes v1.16, and is only honored by servers
+     that enable the PodOverhead feature.
+
+   preemptionPolicy	<string>
+     PreemptionPolicy is the Policy for preempting pods with lower priority. One
+     of Never, PreemptLowerPriority. Defaults to PreemptLowerPriority if unset.
+     This field is beta-level, gated by the NonPreemptingPriority feature-gate.
+
+   priority	<integer>
+     The priority value. Various system components use this field to find the
+     priority of the pod. When Priority Admission Controller is enabled, it
+     prevents users from setting this field. The admission controller populates
+     this field from PriorityClassName. The higher the value, the higher the
+     priority.
+
+   priorityClassName	<string>
+     If specified, indicates the pod's priority. "system-node-critical" and
+     "system-cluster-critical" are two special keywords which indicate the
+     highest priorities with the former being the highest priority. Any other
+     name must be defined by creating a PriorityClass object with that name. If
+     not specified, the pod priority will be default or zero if there is no
+     default.
+
+   readinessGates	<[]Object>
+     If specified, all readiness gates will be evaluated for pod readiness. A
+     pod is ready when all its containers are ready AND all conditions specified
+     in the readiness gates have status equal to "True" More info:
+     https://git.k8s.io/enhancements/keps/sig-network/0007-pod-ready%2B%2B.md
+
+   restartPolicy	<string>
+     Restart policy for all containers within the pod. One of Always, OnFailure,
+     Never. Default to Always. More info:
+     https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+
+   runtimeClassName	<string>
+     RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group,
+     which should be used to run this pod. If no RuntimeClass resource matches
+     the named class, the pod will not be run. If unset or empty, the "legacy"
+     RuntimeClass will be used, which is an implicit class with an empty
+     definition that uses the default runtime handler. More info:
+     https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a
+     beta feature as of Kubernetes v1.14.
+
+   schedulerName	<string>
+     If specified, the pod will be dispatched by specified scheduler. If not
+     specified, the pod will be dispatched by default scheduler.
+
+   securityContext	<Object>
+     SecurityContext holds pod-level security attributes and common container
+     settings. Optional: Defaults to empty. See type description for default
+     values of each field.
+
+   serviceAccount	<string>
+     DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
+     Deprecated: Use serviceAccountName instead.
+
+   serviceAccountName	<string>
+     ServiceAccountName is the name of the ServiceAccount to use to run this
+     pod. More info:
+     https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+
+   setHostnameAsFQDN	<boolean>
+     If true the pod's hostname will be configured as the pod's FQDN, rather
+     than the leaf name (the default). In Linux containers, this means setting
+     the FQDN in the hostname field of the kernel (the nodename field of struct
+     utsname). In Windows containers, this means setting the registry value of
+     hostname for the registry key
+     HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters to
+     FQDN. If a pod does not have FQDN, this has no effect. Default to false.
+
+   shareProcessNamespace	<boolean>
+     Share a single process namespace between all of the containers in a pod.
+     When this is set containers will be able to view and signal processes from
+     other containers in the same pod, and the first process in each container
+     will not be assigned PID 1. HostPID and ShareProcessNamespace cannot both
+     be set. Optional: Default to false.
+
+   subdomain	<string>
+     If specified, the fully qualified Pod hostname will be
+     "<hostname>.<subdomain>.<pod namespace>.svc.<cluster domain>". If not
+     specified, the pod will not have a domainname at all.
+
+   terminationGracePeriodSeconds	<integer>
+     Optional duration in seconds the pod needs to terminate gracefully. May be
+     decreased in delete request. Value must be non-negative integer. The value
+     zero indicates stop immediately via the kill signal (no opportunity to shut
+     down). If this value is nil, the default grace period will be used instead.
+     The grace period is the duration in seconds after the processes running in
+     the pod are sent a termination signal and the time when the processes are
+     forcibly halted with a kill signal. Set this value longer than the expected
+     cleanup time for your process. Defaults to 30 seconds.
+
+   tolerations	<[]Object>
+     If specified, the pod's tolerations.
+
+   topologySpreadConstraints	<[]Object>
+     TopologySpreadConstraints describes how a group of pods ought to spread
+     across topology domains. Scheduler will schedule pods in a way which abides
+     by the constraints. All topologySpreadConstraints are ANDed.
+
+   volumes	<[]Object>
+     List of volumes that can be mounted by containers belonging to the pod.
+     More info: https://kubernetes.io/docs/concepts/storage/volumes
+```
+
+> containers: 容器列表
+>
+> nodeName: 根据nodeName来写死pod的调度节点
+>
+> nodeSelector: 根据标签选择器来选择指定标签的node,然后将pod部署
+>
+> hostName: 是否使用主机模式，默认false.如果使用主机模式，会将该主机的ip作为pod的ip,但是会出现端口冲突的问题，所以一般不采用
+>
+> volumes: 存储卷
+>
+> restartPolicy: 重启策略，当pod出现问题时，重启的策略。
+
+
+
+containers:容器列表
+
+```shell
+kubectl explain pod.spec.containers  # 查看容器资源配置的信息
+KIND:     Pod
+VERSION:  v1
+
+RESOURCE: containers <[]Object>
+
+DESCRIPTION:
+     List of containers belonging to the pod. Containers cannot currently be
+     added or removed. There must be at least one container in a Pod. Cannot be
+     updated.
+
+     A single application container that you want to run within a pod.
+
+FIELDS:
+   args	<[]string>
+     Arguments to the entrypoint. The docker image's CMD is used if this is not
+     provided. Variable references $(VAR_NAME) are expanded using the
+     container's environment. If a variable cannot be resolved, the reference in
+     the input string will be unchanged. The $(VAR_NAME) syntax can be escaped
+     with a double $$, ie: $$(VAR_NAME). Escaped references will never be
+     expanded, regardless of whether the variable exists or not. Cannot be
+     updated. More info:
+     https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+
+   command	<[]string>
+     Entrypoint array. Not executed within a shell. The docker image's
+     ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME)
+     are expanded using the container's environment. If a variable cannot be
+     resolved, the reference in the input string will be unchanged. The
+     $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME).
+     Escaped references will never be expanded, regardless of whether the
+     variable exists or not. Cannot be updated. More info:
+     https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+
+   env	<[]Object>
+     List of environment variables to set in the container. Cannot be updated.
+
+   envFrom	<[]Object>
+     List of sources to populate environment variables in the container. The
+     keys defined within a source must be a C_IDENTIFIER. All invalid keys will
+     be reported as an event when the container is starting. When a key exists
+     in multiple sources, the value associated with the last source will take
+     precedence. Values defined by an Env with a duplicate key will take
+     precedence. Cannot be updated.
+
+   image	<string>
+     Docker image name. More info:
+     https://kubernetes.io/docs/concepts/containers/images This field is
+     optional to allow higher level config management to default or override
+     container images in workload controllers like Deployments and StatefulSets.
+
+   imagePullPolicy	<string>
+     Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always
+     if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated.
+     More info:
+     https://kubernetes.io/docs/concepts/containers/images#updating-images
+
+   lifecycle	<Object>
+     Actions that the management system should take in response to container
+     lifecycle events. Cannot be updated.
+
+   livenessProbe	<Object>
+     Periodic probe of container liveness. Container will be restarted if the
+     probe fails. Cannot be updated. More info:
+     https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+   name	<string> -required-
+     Name of the container specified as a DNS_LABEL. Each container in a pod
+     must have a unique name (DNS_LABEL). Cannot be updated.
+
+   ports	<[]Object>
+     List of ports to expose from the container. Exposing a port here gives the
+     system additional information about the network connections a container
+     uses, but is primarily informational. Not specifying a port here DOES NOT
+     prevent that port from being exposed. Any port which is listening on the
+     default "0.0.0.0" address inside a container will be accessible from the
+     network. Cannot be updated.
+
+   readinessProbe	<Object>
+     Periodic probe of container service readiness. Container will be removed
+     from service endpoints if the probe fails. Cannot be updated. More info:
+     https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+   resources	<Object>
+     Compute Resources required by this container. Cannot be updated. More info:
+     https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+   securityContext	<Object>
+     Security options the pod should run with. More info:
+     https://kubernetes.io/docs/concepts/policy/security-context/ More info:
+     https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+
+   startupProbe	<Object>
+     StartupProbe indicates that the Pod has successfully initialized. If
+     specified, no other probes are executed until this completes successfully.
+     If this probe fails, the Pod will be restarted, just as if the
+     livenessProbe failed. This can be used to provide different probe
+     parameters at the beginning of a Pod's lifecycle, when it might take a long
+     time to load data or warm a cache, than during steady-state operation. This
+     cannot be updated. More info:
+     https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+   stdin	<boolean>
+     Whether this container should allocate a buffer for stdin in the container
+     runtime. If this is not set, reads from stdin in the container will always
+     result in EOF. Default is false.
+
+   stdinOnce	<boolean>
+     Whether the container runtime should close the stdin channel after it has
+     been opened by a single attach. When stdin is true the stdin stream will
+     remain open across multiple attach sessions. If stdinOnce is set to true,
+     stdin is opened on container start, is empty until the first client
+     attaches to stdin, and then remains open and accepts data until the client
+     disconnects, at which time stdin is closed and remains closed until the
+     container is restarted. If this flag is false, a container processes that
+     reads from stdin will never receive an EOF. Default is false
+
+   terminationMessagePath	<string>
+     Optional: Path at which the file to which the container's termination
+     message will be written is mounted into the container's filesystem. Message
+     written is intended to be brief final status, such as an assertion failure
+     message. Will be truncated by the node if greater than 4096 bytes. The
+     total message length across all containers will be limited to 12kb.
+     Defaults to /dev/termination-log. Cannot be updated.
+
+   terminationMessagePolicy	<string>
+     Indicate how the termination message should be populated. File will use the
+     contents of terminationMessagePath to populate the container status message
+     on both success and failure. FallbackToLogsOnError will use the last chunk
+     of container log output if the termination message file is empty and the
+     container exited with an error. The log output is limited to 2048 bytes or
+     80 lines, whichever is smaller. Defaults to File. Cannot be updated.
+
+   tty	<boolean>
+     Whether this container should allocate a TTY for itself, also requires
+     'stdin' to be true. Default is false.
+
+   volumeDevices	<[]Object>
+     volumeDevices is the list of block devices to be used by the container.
+
+   volumeMounts	<[]Object>
+     Pod volumes to mount into the container's filesystem. Cannot be updated.
+
+   workingDir	<string>
+     Container's working directory. If not specified, the container runtime's
+     default will be used, which might be configured in the container image.
+     Cannot be updated.
+```
+
+
+
+> 样例
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox
+```
+
+查看对用的启动情况：
+
+```shell
+kubectl get pod -n dev  # 查看启动的情况，发现busy box 出现：Back-off restarting failed container，而且可以发现已经重启了5次了。
+NAME                                READY   STATUS             RESTARTS   AGE
+dev-nginx                           1/2     CrashLoopBackOff   5          20s
+nginx-deployment-66b6c48dd5-57v5f   1/1     Running            1          23h
+nginx-deployment-66b6c48dd5-d8vc6   1/1     Running            1          23h
+nginx-deployment-66b6c48dd5-wq84f   1/1     Running            1          23h
+
+[root@k8s-01 pod]# kubectl describe pod dev-nginx -n dev
+Name:         dev-nginx
+Namespace:    dev
+Priority:     0
+Node:         k8s-03/172.29.98.72
+Start Time:   Sat, 03 Jul 2021 11:06:09 +0800
+Labels:       type=oddworld
+Annotations:  <none>
+Status:       Running
+IP:           10.244.2.12
+IPs:
+  IP:  10.244.2.12
+Containers:
+  nginx:
+    Container ID:   docker://4e5a2c31d7ae76f6cd12545a715025bc1f0a7179eef3c8ad457e713043a7658f
+    Image:          nginx
+    Image ID:       docker-pullable://nginx@sha256:47ae43cdfc7064d28800bc42e79a429540c7c80168e8c8952778c0d5af1c09db
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Sat, 03 Jul 2021 11:06:13 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-bl2lk (ro)
+  busybox:
+    Container ID:   docker://4466ff2c55055d89505926872f832ee43802cce2f739e7b3a57d35b53e5d2ee1
+    Image:          busybox
+    Image ID:       docker-pullable://busybox@sha256:930490f97e5b921535c153e0e7110d251134cc4b72bbb8133c6a5065cc68580d
+    Port:           <none>
+    Host Port:      <none>
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sat, 03 Jul 2021 11:06:44 +0800
+      Finished:     Sat, 03 Jul 2021 11:06:44 +0800
+    Last State:     Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Sat, 03 Jul 2021 11:06:25 +0800
+      Finished:     Sat, 03 Jul 2021 11:06:25 +0800
+    Ready:          False
+    Restart Count:  2
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-bl2lk (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             False 
+  ContainersReady   False 
+  PodScheduled      True 
+Volumes:
+  kube-api-access-bl2lk:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age               From               Message
+  ----     ------     ----              ----               -------
+  Normal   Scheduled  39s               default-scheduler  Successfully assigned dev/dev-nginx to k8s-03
+  Normal   Pulling    39s               kubelet            Pulling image "nginx"
+  Normal   Pulled     35s               kubelet            Successfully pulled image "nginx" in 3.620273117s
+  Normal   Created    35s               kubelet            Created container nginx
+  Normal   Started    35s               kubelet            Started container nginx
+  Normal   Pulled     26s               kubelet            Successfully pulled image "busybox" in 8.452693171s
+  Normal   Pulled     23s               kubelet            Successfully pulled image "busybox" in 3.122599227s
+  Normal   Pulling    8s (x3 over 35s)  kubelet            Pulling image "busybox"
+  Normal   Created    5s (x3 over 26s)  kubelet            Created container busybox
+  Normal   Pulled     5s                kubelet            Successfully pulled image "busybox" in 3.329484301s
+  Normal   Started    4s (x3 over 26s)  kubelet            Started container busybox
+  Warning  BackOff    4s (x3 over 22s)  kubelet            Back-off restarting failed container
+```
+
+>镜像的拉取策略：
+>
+>imagePullPolicy:  
+>
+>​    Always: 总是去远程拉取
+>
+>​    IfNotPresent:  本地有用本地，本地没有去远程仓库拉取
+>
+>​    Never: 只使用本地的
+>
+>默认值说明：
+>
+>​    如果使用的是具体的版本号，那么就是使用IfNotPresent
+>
+>​    如果使用的lastest，或者没有指定版本号，那么就是使用Always
+
+
+
+有一些软件，启动后，如果没有执行相关命名，k8s会主动关闭掉，那么如果需要一直运行，就需要使用到命令的参数配置: Command
+
+
+
+比如上述的busybox这个软件，就是这种情况的， 如果不加入一些让它一直执行的命令，它会主动关闭掉对应的容器。
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    
+# 通过启动： kubectl apply -f dev.yaml
+# kubectl apply -f dev.yamll
+NAME                                READY   STATUS    RESTARTS   AGE
+dev-nginx                           2/2     Running   0          15s
+发现两个都已经启动了，然后k8需要进去看下，对应的命令是否已经开启成功
+# kubectl exec dev-nginx -n dev -it -c busybox /bin/sh
+进入对应的环境之后，就需要进行查看对应的文件是否已经创建
+tail -f /tmp/hello.txt
+```
+
+环境变量：env其实是一个键值对的数组。配置的环境变量，会替换springboot的系统变量，这个优先级比较高。
+
+```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+
+
+kubectl exec dev-nginx -n dev -it -c busybox /bin/sh  # 进入容器
+
+echo $jeffchan
+caraliu
+
+```
+
+
+
+设置端口号：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+    ports:
+    - name: busy-port
+      containerPort: 800
+      protocol: TCP #默认就是TCP,只能是TCP,UDP,sctp
+```
+
+**资源配置**：
+
+>如果不对资源做相关的限制，那么某个容器可能会因为某些异常，吃掉大量的内存，从而导致其他容器受到影响，所以需要通过资源的限制来防止这种问题的发生。
+>
+>limits: 限制容器的最大资源，当超过这个设置的值之后，容器会被重启
+>
+>requests : 这只资源的最小值，如果小于这个值，那么容器将启动不起来 
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+    ports:
+    - name: busy-port
+      containerPort: 800
+      protocol: TCP #默认就是TCP,只能是TCP,UDP,sctp
+    resources:
+      limits:
+        cpu: "2"
+        memory: "10Gi"
+      requests:
+        cpu: "1"
+        memory: "10Gi"
+        
+ cpu: 核心数，可以是小数
+ memory: 内存大小，G,M,Gi，Mi
+```
+
+
+
+#### 3.2.2、pod的生命周期
+
+**pod的生命周期就是指从容器创建到终止的整个过程**
+
+>创建pod
+>
+>运行初始化容器
+>
+>运行主容器
+>
+>​     容器启动后的钩子，容器关闭前钩子
+>
+>​     容器的存活性探测，容器的就绪性探测
+>
+>pod的终止过程
+
+**整个过程中会出现五种状态**（相位）
+
+> 挂起：apiServer已经创建了pod,尚未调度完成或者还处在下载镜像的过程中
+>
+> 运行中：已经调度了对应的节点，同时所有的容器已经创建成功
+>
+> 成功：容器成功执行完，不会被重启，比如busybox启动后执行一个命令
+>
+> 失败：所有容器都已经终止：但至少有一个容器返回了非0的退出状态。
+>
+> 未知：通常是网络导致的，apiServer无法获取到pod的状态信息
+
+
+
+**创建pod的流程**
+
+>用户通过kubelet或者其他的api客户端提交需要创建pod的信息给apiServer
+>
+>apiServer开始生成pod对象的信息，并将信息存入etcd中，然后返回确认给客户端
+>
+>apiServer开始反映etcd的pod对象的变化，其他组件通过watch机制来检查apiServer的变动
+>
+>scheduler发现有新的pod对象需要创建，开始给pod分配主机并将结果信息更新到apiServer
+>
+>node接待你上的kubelet发现有pod调度过来，尝试调用docker启动容器，并将结果返回给apiServer
+>
+>apiServer将接收到的pod的状态存入到etcd中
+
+**终止pod的过程**
+
+> 用户想apiServer发送删除pod对象的命令
+>
+> apiServer
+>
+> 将pod标记为terminating状态
+>
+> 
+
+
+
+**运行初始化容器**
+
+> **特征**:
+>
+> 初始化容器必须完成成功，不成功一直重试
+>
+> 初始化容器按照顺序执行
+>
+> 
+>
+> **运用场景**：
+>
+> 提供容器组不具备的工具程序或者自定义程序
+>
+> 初始化容器要先于运用容器完成，因此可以做一些该运行容器的一些依赖处理。
+
+
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+    ports:
+    - name: busy-port
+      containerPort: 800
+      protocol: TCP #默认就是TCP,只能是TCP,UDP,sctp
+    resources:
+      limits:
+        cpu: "2"
+        memory: "10Gi"
+      requests:
+        cpu: "1"
+        memory: "10Gi"
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+```
+
+
+
+**钩子函数**
+
+>pre start: 在容器启动后执行
+>
+>pre stop: 在容器结束关闭前执行
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+    ports:
+    - name: busy-port
+      containerPort: 800
+      protocol: TCP #默认就是TCP,只能是TCP,UDP,sctp
+    resources:
+      limits:
+        cpu: "2"
+        memory: "10Gi"
+      requests:
+        cpu: "1"
+        memory: "10Gi"
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh","-c", "echo postStart > /hsr/share/nginx/html/index.html"]
+      preStop:
+        exec:
+          command: ["/usr/sbin/nginx", "-s", "quit"]
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+```
+
+
+
+**容器探测**
+
+> 容器探测是来监控出异常的实例，将它剔除，不承担业务流量
+>
+> 
+>
+> **有两种探针**：
+>
+>  liveness probes: 存活性探针，如果探测实例是否处于正常运行状态，如果不是，k8s会重启容器
+>
+>  readiness probes:  就绪性探针，用于检查实例是否可以接受请求，如果不是，k8s不会转发流量
+>
+> 
+>
+> **三种探测方式**：
+>
+> Exec:
+>
+> 
+>
+> TCPSocket:
+>
+> 
+>
+> HTTPGet:
+
+
+
+**重启策略**：失败后，会延时10s,20,40,60...重启
+
+>Always: 容器失效时及重启，默认值
+>
+>Onfailure:  容器终止运行且不为零0时重启
+>
+>Never: 不论什么状态都不重启
+
+
+
+#### 3.2.3、pod的调度
+
+pod的调度是由scheduler来控制的，scheduler采用某些调度算法进行计算，然后计算出调度的节点，最后pod就在该节点创建运行。
+
+> 自动调度：流行在哪个节点完全由scheduler经过一系列算法计算得出
+>
+> 定向调度：NodeName  NodeSelector
+>
+> 亲和性调度：NodeAffinity  PodAffniity  PodAntiAffnity
+>
+> 污点（容忍）调度：Taints  Toleration, 指node由污点，容忍是指pod能容忍多少个。
+
+ 
+
+**定向调度**：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-nginx
+  namespace: dev
+  labels:
+    type: oddworld
+spec:
+  containers:
+  - name:  nginx
+    image: nginx
+  - name: busybox
+    image: busybox 
+    command: ["/bin/sh","-c","touch /tmp/hello.txt; while true; do /bin/echo $(date + %T) >> /tmp/hello.txt; sleep 3; done"]
+    env:
+    - name: jeffchan
+      value: caraliu
+    ports:
+    - name: busy-port
+      containerPort: 800
+      protocol: TCP #默认就是TCP,只能是TCP,UDP,sctp
+    resources:
+      limits:
+        cpu: "2"
+        memory: "10Gi"
+      requests:
+        cpu: "1"
+        memory: "10Gi"
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh","-c", "echo postStart > /hsr/share/nginx/html/index.html"]
+      preStop:
+        exec:
+          command: ["/usr/sbin/nginx", "-s", "quit"]
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+  nodeName: node1
+  nodeSelector:
+     run: dev
+```
+
+
+
+**亲和度调度**：
+
+>nodeAffinity
+>
+>   ```yaml
+># 强制的节点亲和性调度
+>apiVersion: v1
+>kind: Pod
+>metadata:
+>  name: nginx
+>spec:
+>  affinity:
+>    nodeAffinity:
+>      requiredDuringSchedulingIgnoredDuringExecution:
+>        nodeSelectorTerms:
+>        - matchExpressions:
+>          - key: disktype
+>            operator: In
+>            values:
+>            - ssd            
+>  containers:
+>  - name: nginx
+>    image: nginx
+>    imagePullPolicy: IfNotPresent
+>    
+>---
+># 使用首选的节点亲和性调度
+>apiVersion: v1
+>kind: Pod
+>metadata:
+>  name: nginx
+>spec:
+>  affinity:
+>    nodeAffinity:
+>      preferredDuringSchedulingIgnoredDuringExecution:
+>      - weight: 1
+>        preference:
+>          matchExpressions:
+>          - key: disktype
+>            operator: In
+>            values:
+>            - ssd          
+>  containers:
+>  - name: nginx
+>    image: nginx
+>    imagePullPolicy: IfNotPresent
+>   ```
+>
+>
+>
+>podAffinity
+>
+>
+>
+>podAntiAffintity
+
+
+
+
+
+
+
 ### 3.3、Label
 
 
