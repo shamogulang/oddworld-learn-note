@@ -381,7 +381,18 @@ No resources found in dev namespace.  我们这里是没有pod控制器的，所
 
 #### 3.2.1、pod的理论
 
-pod里面的容器有两种类型，一种是根容器Pause；一种是用户容器,可以有多个。
+pod的使用主要有两种用法：
+
+```
+1、运行单个容器，这样子可以将pod看出是单个容器的包装器，k8s直接管理的是pod而不是容器。
+2、运行多个容器的pod，这种使用方式是将多个需要共享资源的容器放到一起。
+```
+
+> pod天生为其他容器提供了网络和存储两个功能。
+
+
+
+pod里面的容器有两种类型，一种是根容器Pause，只有一个；一种是用户容器,可以有多个。
 
 根容器的作用：
 
@@ -1398,7 +1409,7 @@ spec:
 >  - name: nginx
 >    image: nginx
 >    imagePullPolicy: IfNotPresent
->   ```
+> ```
 >
 >
 >
@@ -1409,6 +1420,69 @@ spec:
 >podAntiAffintity
 
 
+
+### 3.3、pod控制器
+
+> pod的控制器分为两类：
+>
+> 1、自主的pod，删除了就没了
+>
+> 2、由pod控制器管理的，被删除后会重新创建
+
+
+
+> 分类：
+>
+> 1、ReplicaSet: 保证定量的pod，可以进行变更
+>
+> 2、Deployment：对ReplicaSet的封装，还支持版本升级和回退
+>
+> 3、DeamonSet： 每一个node节点都有只有一个pod
+>
+> 4、Job： 完成任务后立即退出，只执行一次
+>
+> 5、CronJob：周期性执行，用于周期任务，通过控制Job来实现的
+>
+> 6、StatefulSet：管理状态任务
+>
+> 7、Horizontal Pod Autoscaling  会自动伸缩
+
+
+
+#### 3.3.1、ReplicaSet
+
+> 保证一定数量的pod运行。该控制器会监控对应的pod，如果出现问题，会进行重启或者重新创建。
+>
+> 设置对应的配置文件
+>
+> ```yaml
+> apiVersion: apps/v1
+> kind: ReplicaSet
+> metadata:
+>   name: nginx-re
+>   labels:
+>     app: nginx
+> spec:
+>   # modify replicas according to your case
+>   replicas: 3
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx
+> ```
+>
+> 
+
+
+
+#### 3.3.2、Deployment
 
 
 
