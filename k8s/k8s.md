@@ -1420,6 +1420,113 @@ spec:
 
 ### 3.4、Deployment
 
+#### 3.4.1、扩缩容器
+
+> kubectl get deploy -n dev   获取对应的deploy的信息
+>
+>
+> NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+> nginx-deployment   3/3     3            3           2d2h
+
+发现这里的pod的副本是3个，可以通过以下两种方式进行修改数量：
+
+```yaml
+kubectl scale deploy nginx-deployment  --replicas=5 -n dev   #  扩展pod的副本为5
+deployment.apps/nginx-deployment scaled
+
+kubectl get deploy  -n dev # 查看结果已经修改了
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   5/5     5            5           2d2h
+
+kubectl edit deploy nginx-deployment  -n dev #然后修改，保存退出就行了，我这里改回3个副本
+```
+
+#### 3.4.2、升级策略
+
+> 1、滚动更新
+>
+>  kubectl get deploy -n dev -o wide
+> NAME               READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS   IMAGES         SELECTOR
+> nginx-deployment   3/3     3            3           2d3h   nginx        nginx:1.14.2   app=nginx
+
+修改对应pod的配置：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+  namespace: dev
+spec:
+  strategy:
+    type: RollingUpdate  # 滚动更新,不配置，默认就是这个策略
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+
+
+> kubectl set image deploy nginx-deployment nginx=nginx:1.4.3 -n dev
+
+![1625839195779](k8s.assets/1625839195779.png)
+
+可以发现是先启动一个新版本的pod，然后停一个，重复这个动作，直到所有的都更新完毕。
+
+
+
+> 2、重建更新
+
+```
+修改配置文件为：
+```
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+  namespace: dev
+spec:
+  strategy:
+    type: Recreate  # 重建更新
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+然后执行以下： kubectl apply -f dev-nginx.yaml
+
+![1625839542799](k8s.assets/1625839542799.png)
+
+从结果可以看出是以下杀死所有的pod,然后重新创建新的三个pod。
+
 
 
 ### 3.5、Service
