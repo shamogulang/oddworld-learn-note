@@ -60,6 +60,61 @@ spec:
     k8s-app: kubernetes-dashboard
 ```
 
+访问： ip:30009 注意：我这里是用了阿里云的服务器，所以需要打开某些端口的话就要设置一些安全组。
+
+进入到登录的界面提示需要一个token，那么就需要执行下面：
+
+```sh
+kubectl create serviceaccount admin
+kubectl create clusterrolebinding dash-admin --clusterrole=cluster-admin --serviceaccount=default:admin
+secret=$(kubectl get sa admin -o jsonpath='{.secrets[0].name}')
+kubectl get secret $secret -o go-template='{{ .data.token | base64decode }}'
+```
+
+然后拿到对应的token:
+
+```
+eyJhbGciOiJSUzI1NiIsImtpZCI6IkpBVUh0ZE9RSWpiTlU2enZERnludVBBLVdvYUtXNTA3TFZtNmJjcGJVRTAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImFkbWluLXRva2VuLTUyNXg2Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiMzA1YjVjZWQtZGI1ZS00YjliLWFlNWUtMDcyMjQyMjVlMzIyIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6YWRtaW4ifQ.EoyQQugUHaw_4kWxhfU5kprwxz7qo-FYyf7t0MwSvgPhyF5MVl5N9OGirCCkWwq0Z0sKlyA-UWD1-6dgY4nLFAf9F8hXywzEYyGpi0OcuCO0YPmd7bwtPiALwTBRXuqk--CRL2TwL-hmNe3YcaxF49MHeJPfyQ1X1plTnCYnrbBN1QyF9W6_9Y0c68p58WbDNeiVGT7clOng9ZyKsv3ESl0pRYIpuWQIotfQdUbfmk8EC8XOEPK9hdE1vU1ZF38RraZ8uBkD2D-IVPv4R4YhmHmQCF5Xwhohr2YFUZFS7kOS7tZe2cDAhT19I2YZvyD-uw6OksJ65qvMCb4GcE8mQA
+```
+
+然乎便可以进入到界面了
+
+![image-20210709144944148](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210709144944148.png)
+
+
+
+## 3、Kuboard的安装
+
+官网链接：https://kuboard.cn/install/install-dashboard.html#%E5%AE%89%E8%A3%85
+
+> 首先拉取两个配置文件到本地
+>
+> wget https://kuboard.cn/install-script/kuboard.yaml
+>
+> wget  https://addons.kuboard.cn/metrics-server/0.3.7/metrics-server.yaml
+>
+> ```sh
+> kubectl apply -f kuboard.yaml
+> kubectl apply -f metrics-server.yaml
+> ```
+
+在访问之前：看下服务是否已经启动：
+
+![image-20210709150716947](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210709150716947.png)
+
+可以看到正常启动了，接下来要访问：
+
+```
+echo $(kubectl -n kube-system get secret $(kubectl -n kube-system get secret | grep kuboard-user | awk '{print $1}') -o go-template='{{.data.token}}' | base64 -d)
+
+得到对应的token:
+eyJhbGciOiJSUzI1NiIsImtpZCI6IkpBVUh0ZE9RSWpiTlU2enZERnludVBBLVdvYUtXNTA3TFZtNmJjcGJVRTAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJrdWJvYXJkLXVzZXItdG9rZW4tenJtc3IiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoia3Vib2FyZC11c2VyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNjE2ZTMyMDEtYzE1ZC00Njg0LWI4YzEtNWUxZjkzYjE0NDQ0Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Omt1YmUtc3lzdGVtOmt1Ym9hcmQtdXNlciJ9.XqQFPlWRXNj2HLRH_o9jlGeJ6phtnmrZFSSNJLlfL-XFfzCxuhWysYOzSqtNR1jok1yzh18CNTUSbZ6-pqc-IaGHXpMk3gkny6KwSATdjSg0hKY3mDWGlrCKz_nV1m7wmImT8-wrgX_zXIRkHV7QZVWJ4VeekTLmJ_f3WceaKbnIYKZUwhifBVXwY2iU_0VjfQRdDwboBOD8KBABJkBJg1YUfQDU3xFyjSCjgopYzIaZQi_HRSY5w6jejC82do4WxPSyXr_oDWpH78k0K8QtE8QqYOSPypWn7trln_ZhVgsA2OIRp3Vaio5RB2QYYZZgGm7cX1L9jkhysgdzyMhyDQ
+```
+
+然后访问：ip:30009  **注意** 阿里云ECS的服务器需要进行安全组的设置，就是开放端口了。
+
+
+
 
 
 ## 2、kubectl命令
@@ -1435,7 +1490,7 @@ spec:
 >
 > 1、ReplicaSet: 保证定量的pod，可以进行变更
 >
-> 2、Deployment：对ReplicaSet的封装，还支持版本升级和回退
+> 2、Deployment：对ReplicaSet的封装，还支持版本滚动升级和回退，支持发布停止和继续
 >
 > 3、DeamonSet： 每一个node节点都有只有一个pod
 >
@@ -1453,7 +1508,7 @@ spec:
 
 > 保证一定数量的pod运行。该控制器会监控对应的pod，如果出现问题，会进行重启或者重新创建。
 >
-> 设置对应的配置文件
+> 设置对应的配置文件:  这里会创建三个副本的pod
 >
 > ```yaml
 > apiVersion: apps/v1
@@ -1462,8 +1517,8 @@ spec:
 >   name: nginx-re
 >   labels:
 >     app: nginx
+>   namespace: dev
 > spec:
->   # modify replicas according to your case
 >   replicas: 3
 >   selector:
 >     matchLabels:
@@ -1478,13 +1533,123 @@ spec:
 >         image: nginx
 > ```
 >
-> 
+> 然后执行：kubectl apply -f rs.yaml
+>
+> 然后执行：kubectl get pod -n dev  
+>
+> 结果如下：
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          103s
+> nginx-re-7b6dd   1/1     Running   0          103s
+> nginx-re-lp8w9   1/1     Running   0          103s
+>
+> 查看对应的控制器信息：kubectl get rs -n dev -o wide
+> NAME       DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES   SELECTOR
+> nginx-re   3         3         3       4m53s   nginx        nginx    app=nginx
+
+
+
+**进行扩缩容的方式**：
+
+> 1、直接通过编辑命令进行修改： kubectl edit rs  nginx-re -n dev
+>
+> 然后将对应的副本数修改成：6，这个修改方式跟vim是一样的。
+>
+> 修改保存后查看：kubectl get pod -n dev
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          10m
+> nginx-re-5hvb8   1/1     Running   0          12s
+> nginx-re-7b6dd   1/1     Running   0          10m
+> nginx-re-jvxft   1/1     Running   0          12s
+> nginx-re-kngdk   1/1     Running   0          12s
+> nginx-re-lp8w9   1/1     Running   0          10m
+>
+> 发现现在又6个pod。
+>
+> 2、通过配置文件更新的方式： kubectl scale rs nginx-re --replicas=2 -n dev
+>
+> 然后通过,，发现只剩下两个了：kubectl get pod -n dev
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          76m
+> nginx-re-7b6dd   1/1     Running   0          76m
+
+
+
+**升级版本**
+
+>1、直接通过编辑命令进行修改： kubectl edit rs  nginx-re -n dev
+>
+>然后进行修改版本，直接退出即可（发现修改了镜像的版本）：  kubectl get rs -n dev -o wide
+>NAME       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES        SELECTOR
+>nginx-re   2         2         2       82m   nginx        nginx:1.7.1   app=nginx
+>
+>
+>
+>2、直接修改：kubectl set image rs nginx-re nginx=nginx:1.7.2  -n dev
+>replicaset.apps/nginx-re image updated
+>
+>然后查看： kubectl get rs -n dev -o wide
+>NAME       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES        SELECTOR
+>nginx-re   2         2         2       84m   nginx        nginx:1.7.2   app=nginx
+
+
+
+删除控制器可以直接通过:  kubectl delete -f  xxx.yaml文件即可。
 
 
 
 #### 3.3.2、Deployment
 
+> deployment是通过控制rs来控制pod的，它包含了所有的rs功能。
+>
+> 支持滚动更新和回退
+>
+> 支持发布停止和继续
 
+这里也是通过yaml的方式去构建这个控制器：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: dev
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+>kubectl get deploy -n dev
+>NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+>nginx-deployment   3/3     3            3           3m48s
+>
+>对应的rs(仅仅实在deployment后面加入了一个随机串而已):   kubectl get rs -n dev
+>NAME                          DESIRED   CURRENT   READY   AGE
+>nginx-deployment-66b6c48dd5   3         3         3       5m20s
+>
+>对应的pod(在rs后面加入了一个随机串):   kubectl get pod -n dev
+>NAME                                READY   STATUS    RESTARTS   AGE
+>nginx-deployment-66b6c48dd5-b7dzj   1/1     Running   0          6m9s
+>nginx-deployment-66b6c48dd5-c29dp   1/1     Running   0          6m10s
+>nginx-deployment-66b6c48dd5-jzw9m   1/1     Running   0          6m10s
+
+**版本更新**：
+
+可以也通过
 
 
 
@@ -1598,6 +1763,137 @@ NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
 svc-nginx    ClusterIP   10.98.39.83     <none>        80/TCP         7s
 svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   3h8m
 ```
+
+#### 3.5.1、通过文件创建资源
+
+##### ClusterIP类型
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+  namespace: dev
+spec:
+  selector:
+    app: nginx
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 30000
+      targetPort: 80
+```
+
+创建：kubectl apply -f   service-clusterIP.yaml
+
+> kubectl  get svc -n dev
+>
+> ```
+> NAME      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
+> service   ClusterIP   10.104.1.119   <none>        30000/TCP   20m
+> ```
+
+然后：curl  10.104.1.119:30000  反应出对应的nginx的欢迎界面。
+
+> service的对应的pod信息：(这里通过轮询的机制进行访问对应的pod)
+>
+> ipvsadm -Ln
+>
+> ```
+> TCP  10.104.1.119:30000 rr
+>   -> 10.244.1.34:80               Masq    1      0          0         
+>   -> 10.244.1.35:80               Masq    1      0          0         
+>   -> 10.244.2.39:80               Masq    1      0          0  
+> ```
+
+> 这种模式的一般是集群内的，外部无法访问，所以一般不推荐使用。
+
+进入到对应的pod中修改配置首页的信息：将三个节点的配置文件都修改：
+
+```
+kubectl exec  -it  nginx-deployment-6c74bfd64-jpv2s -n dev  /bin/sh
+
+echo "10.244.1.35" > /usr/share/nginx/html/index.html
+```
+
+然后请求验证轮询的策略：
+
+![image-20210712155114110](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210712155114110.png)
+
+> 查看具体的详情：
+>
+> kubectl describe svc service -n dev
+> Name:              service
+> Namespace:         dev
+> Labels:            <none>
+> Annotations:       <none>
+> Selector:          app=nginx
+> Type:              ClusterIP
+> IP Family Policy:  SingleStack
+> IP Families:       IPv4
+> IP:                10.104.1.119
+> IPs:               10.104.1.119
+> Port:              <unset>  30000/TCP
+> TargetPort:        80/TCP
+> Endpoints:         10.244.1.34:80,10.244.1.35:80,10.244.2.39:80
+> Session Affinity:  None
+> Events:            <none>
+
+这里Endpoints就对应着service需要转发的pod的节点集合。
+
+###### Endpoints
+
+> Endpoints是k8s的资源对象，存储在etcd中，用来记录一个service对应的所有pod的服务地址，它是service中的selector来匹配pod的标签得到的。
+>
+> **查看语句**
+>
+> kubectl get Endpoints  -n dev
+>
+> ```
+> NAME      ENDPOINTS                                      AGE
+> service   10.244.1.34:80,10.244.1.35:80,10.244.2.39:80   94m
+> ```
+
+
+
+###### 负载均衡策略
+
+- 如果不指定，默认使用kube-proxy的轮询策略
+- 基于会话的保持模式，会将同一个ip过来的请求，都转发到同一个pod去。需要配置：`sessionAffinity:ClientIP`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+  namespace: dev
+spec:
+  selector:
+    app: nginx
+  type: ClusterIP
+  sessionAffinity: ClientIP # clientIP,默认值为Node
+  ports:
+    - protocol: TCP
+      port: 30000
+      targetPort: 80
+```
+
+> 启动后查看：ipvsadm -Ln
+>
+> `TCP  10.100.240.60:30000 rr persistent 10800
+>   -> 10.244.1.34:80               Masq    1      0          0         
+>   -> 10.244.1.35:80               Masq    1      0          0         
+>   -> 10.244.2.39:80               Masq    1      0          0  `
+
+发现多了 `persistent 10800`,表示持久化的意思，同一个客户端的请求过来会保存一定时间，都请求到同一个pod去。
+
+![image-20210712164345275](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210712164345275.png)
+
+> 查看上述的图片，不再是轮询，而是访问同一个pod
+
+
+
+##### NodePort类型
 
 
 
