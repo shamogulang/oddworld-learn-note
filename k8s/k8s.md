@@ -1841,7 +1841,7 @@ echo "10.244.1.35" > /usr/share/nginx/html/index.html
 
 这里Endpoints就对应着service需要转发的pod的节点集合。
 
-###### Endpoints
+**Endpoints**
 
 > Endpoints是k8s的资源对象，存储在etcd中，用来记录一个service对应的所有pod的服务地址，它是service中的selector来匹配pod的标签得到的。
 >
@@ -1856,7 +1856,7 @@ echo "10.244.1.35" > /usr/share/nginx/html/index.html
 
 
 
-###### 负载均衡策略
+**负载均衡策略**
 
 - 如果不指定，默认使用kube-proxy的轮询策略
 - 基于会话的保持模式，会将同一个ip过来的请求，都转发到同一个pod去。需要配置：`sessionAffinity:ClientIP`
@@ -1895,5 +1895,165 @@ spec:
 
 ##### NodePort类型
 
+> 配置文件如下：
+>
+> ```yaml
+> apiVersion: v1
+> kind: Service
+> metadata:
+>   name: service-nodeport
+>   namespace: dev
+> spec:
+>   selector:
+>     app: nginx
+>   type: NodePort # service类型
+>   ports:
+>   - port: 80
+>     nodePort: 9002 # 指定绑定的node的端口(默认的取值范围是：30000-32767)
+>     targetPort: 80
+> ```
+>
+> 这里的端口号给的不合法，会报下面的错误。
+> The Service "service-nodeport" is invalid: spec.ports[0].nodePort: Invalid value: 9002: provided port is not in the valid range. The range of valid ports is 30000-32767
+>
+> 改成30003：但是我需要开放阿里云的这个端口。就是要去配置安全组。
+>
+> 查看是否成功：
+>
+> kubectl get svc -n dev -o wide
+>
+> ```
+> NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE    SELECTOR
+> service            ClusterIP   10.100.240.60   <none>        30000/TCP      5h8m   app=nginx
+> service-nodeport   NodePort    10.96.169.179   <none>        80:30003/TCP   11s    app=nginx
+> ```
+>
+> curl  8.134.94.208:30003  返回数据，也可以通过浏览器访问。如下图返回对应的前面步骤中设置的ip地址
+>
+> ![1626098031462](k8s.assets/1626098031462.png)
 
+
+
+### 3.6、Ingress介绍
+
+> 上述能在外网访问的服务中，有NodePort河LoadBalance两种方式
+>
+> - NodePort: 发现每个service都要占用集群一个端口，当端口很多的时候，不太方便管理
+> - LoadBalance: 每个service都需要一个LB，需要额外的设置支持，很麻烦
+
+Ingress只需要一个NodePort或者LB就可以暴露多个service, Ingress相当于一个七层的负载器，是k8s的一个反向代理。它的原理类似反向代理，它内部可以设置多个规则，然后Ingress Controller监听这些规则并转化成nginx的反向代理设置。从而暴露对应的service。
+
+> 两个核心概念：
+>
+> - Ingress k8s的一个对象，作用如何是定义请求如何转成service的规则。
+> - Ingress controller 具体的负载均衡和反向代理的程序。实现的方式有nginx等。将规则解析，然后进行请求转发。
+
+
+
+**搭建Ingress环境**
+
+```yaml
+# 获取ingress-nginx，本次案例使用的是0.30版本
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/mandatory.yaml
+
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml
+
+
+然后执行： kubectl apply -f ./
+```
+
+查看service和pod：
+
+![1626100196443](k8s.assets/1626100196443.png)
+
+
+
+创建tomcat和nginx的镜像pod实列：
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tomcat-pod
+  template:
+    metadata:
+      labels:
+        app: tomcat-pod
+    spec:
+      containers:
+      - name: tomcat
+        image: tomcat:8.5-jre10-slim
+        ports:
+        - containerPort: 8080
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  clusterIP: None
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tomcat-service
+  namespace: dev
+spec:
+  selector:
+    app: tomcat-pod
+  clusterIP: None
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+```
+
+kubectl apply -f tomcat-nginx.yaml
+
+```
+kubectl get svc -n dev
+NAME             TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+nginx-service    ClusterIP   None         <none>        80/TCP     89s
+tomcat-service   ClusterIP   None         <none>        8080/TCP   89s
+```
 
