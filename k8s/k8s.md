@@ -373,8 +373,138 @@ No resources found in dev namespace.
 
 这里可以看到删除成功了，去查看也没有了，但是很多时候，你会发现你删除了，pod控制器会马上创建一个新的pod给你。
 我们这里能删除成功的原因是：
-kubectl get deployment -n dev
-No resources found in dev namespace.  我们这里是没有pod控制器的，所以就能删除。
+kubectl get deployment -n dev，No resources found in dev namespace.  我们这里是没有pod控制器的，所以就能删除。
+```
+
+
+
+
+
+### 3.3、Label
+
+给资源添加标识，用于区分和选择，一个资源对象可以添加多个标签
+
+```shell
+kubectl run nginx --image=nginx --namespace=dev  # 跑一个pod，其实就是资源
+
+
+kubectl label pod nginx -n dev version=1.0  # 给资源打一个标签
+
+kubectl get pod -n dev --show-labels # 显示运行的pod，同时打印对应的标签
+
+[root@k8s-01 k8s]# kubectl label pod nginx -n dev version=2.0
+error: 'version' already has a value (1.0), and --overwrite is false
+
+#如果需要更新一个标签，需要在后面加一个--overwrite的参数
+kubectl label pod nginx -n dev version=2.0 --overwrite
+
+#刷选标签：通过一个-l的参数设置即可
+[root@k8s-01 k8s]# kubectl get pod -n dev -l "version=1.0" --show-labels
+No resources found in dev namespace.
+[root@k8s-01 k8s]# kubectl get pod -n dev -l "version=2.0" --show-labels
+NAME    READY   STATUS    RESTARTS   AGE   LABELS
+nginx   1/1     Running   0          11m   run=nginx,version=2.0
+
+#删除标签，还是通过创建label的命令，不过是要在标签的key后面加一个减号-
+[root@k8s-01 k8s]# kubectl label pod nginx -n dev version-
+pod/nginx labeled
+[root@k8s-01 k8s]# kubectl get pod -n dev --show-labels
+NAME    READY   STATUS    RESTARTS   AGE   LABELS
+nginx   1/1     Running   0          14m   run=nginx
+```
+
+
+
+label selector: 标签选择器
+
+​       基于等式的selector
+
+​      基于集合的selector
+
+
+
+
+
+### 3.4、Deployment
+
+pod的控制器，用于管理pod，确保pod符合我们的预期状态，如果出现问题，会重新启动pod，或者删除pod，然后创建一个新的pod。
+
+通过文件的方式启动：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+```yaml
+kubectl apply -f   dev.yaml  
+```
+
+
+
+然后可以查看对应的控制器：
+
+```
+[root@k8s-01 deployment]# kubectl get deployment -n default
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3/3     3            3           5m2s
+```
+
+```shell
+[root@k8s-01 deployment]# kubectl get pod -n default -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE     NOMINATED NODE   READINESS GATES
+nginx-deployment-66b6c48dd5-22g77   1/1     Running   0          11m   10.244.2.5   k8s-03   <none>           <none>
+nginx-deployment-66b6c48dd5-7bbvw   1/1     Running   0          11m   10.244.1.7   k8s-02   <none>           <none>
+nginx-deployment-66b6c48dd5-wfdxm   1/1     Running   0          11m   10.244.1.6   k8s-02   <none>           <none>
+[root@k8s-01 deployment]# kubectl delete pod nginx-deployment-66b6c48dd5-22g77
+pod "nginx-deployment-66b6c48dd5-22g77" deleted
+[root@k8s-01 deployment]# kubectl get pod -n default -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE     NOMINATED NODE   READINESS GATES
+nginx-deployment-66b6c48dd5-7bbvw   1/1     Running   0          12m   10.244.1.7   k8s-02   <none>           <none>
+nginx-deployment-66b6c48dd5-fmtgk   1/1     Running   0          9s    10.244.2.6   k8s-03   <none>           <none>
+nginx-deployment-66b6c48dd5-wfdxm   1/1     Running   0          12m   10.244.1.6   k8s-02   <none>           <none>
+
+#从上面看出，如果有pod的控制器，那么删除后，会自动创建一个新的pod:
+# nginx-deployment-66b6c48dd5-22g77这个被删除了，但是创建了一个新的：
+# nginx-deployment-66b6c48dd5-7bbvw
+
+通过删除控制器，可以删除所有的资源：
+[root@k8s-01 deployment]# kubectl  get deployments
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3/3     3            3           14m
+[root@k8s-01 deployment]# kubectl delete deployment nginx-deployment
+deployment.apps "nginx-deployment" deleted
+[root@k8s-01 deployment]# kubectl get pods 
+NAME                                READY   STATUS        RESTARTS   AGE
+nginx-deployment-66b6c48dd5-7bbvw   0/1     Terminating   0          15m
+nginx-deployment-66b6c48dd5-wfdxm   0/1     Terminating   0          15m
+[root@k8s-01 deployment]# kubectl get pods 
+NAME                                READY   STATUS        RESTARTS   AGE
+nginx-deployment-66b6c48dd5-7bbvw   0/1     Terminating   0          15m
+nginx-deployment-66b6c48dd5-wfdxm   0/1     Terminating   0          15m
+[root@k8s-01 deployment]# kubectl get pods 
+No resources found in default namespace.
+
+到最后发现所有的pod都删除了。
 ```
 
 
@@ -383,11 +513,7 @@ No resources found in dev namespace.  我们这里是没有pod控制器的，所
 
 
 
-### 3.3、Label
 
-
-
-### 3.4、Deployment
 
 
 
