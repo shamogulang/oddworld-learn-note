@@ -2177,7 +2177,7 @@ ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526
 
 
 
-#### 3.7、EmptyDir
+#### 3.7.1、EmptyDir
 
 EmptyDir是最基础的volume类型，一个EmptyDir就是一个host的空目录。EmptyDir是在pod被分配Node之后
 
@@ -2235,4 +2235,120 @@ volume-emptydir                      2/2     Running   0          8m8s   10.244.
 
 
 
-#### 3.8、HostPath
+#### 3.7.2、HostPath
+
+EmptyDir中的数据会随着pod的结束而销毁，如果想要将数据存储在主机中，可以使用HostPath。它将Node主机的一个实际目录挂在Pod中，来供容器使用，就算pod销毁了，数据依然可以存在主机上，不会丢失。
+
+创建hostpath.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-hostpath
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  volumes:
+  - name: logs-volume
+    hostPath: 
+      path: /root/logs
+      type: DirectoryOrCreate # 目录存在就使用，不存在就创建
+```
+
+> 上面的type类型
+>
+> - DirectoryOrCreate  目录存在就用，不存在就创建
+> - Directory  目录必须存在
+> - FileOrCreate  文件存在就用，不存在就创建
+> - File  文件必须存在
+
+  执行：kubectl apply -f   hostpath.yaml
+
+![1626180834190](k8s.assets/1626180834190.png)
+
+然后就curl   10.244.1.43:80
+
+> 到k8s-02这台机器查看日志
+
+![1626181042544](k8s.assets/1626181042544.png)
+
+
+
+#### 3.7.3、NFS
+
+HostPath虽然可以保存数据到主机上，但是如果对应的pod出问题了，再次部署的时候，到了别的节点，那么对应的数据就相当于丢失了。
+
+> NFS是一个网络文件存储系统，可以搭建一台NFS服务器，然后将pod中的存储直接连接到NFS系统，这样的话，无论pod的系欸但怎么转移，只要Node跟NFS能够链接，数据就可以访问。
+
+准备nfs的服务器，为了简单，直接将master节点当作nfs服务器。
+
+> 三台机器都执行一下命令安装nfs的工具
+>
+> yum install nfs-utils -y
+>
+> 准备一个共享目录：
+>
+> mkdir /root/data/nfs -pv
+>
+> chmod +777 /root/data
+>
+> 查看对应的ip： ip addr
+>
+> 我这里是阿里云的服务器，有三台主机，master的内网ip为：
+>
+>  172.29.98.73/20 
+
+```yaml
+# 将共享目录以读写权限暴露给 172.29.98.73/24网段中的所有主机
+vim /etc/exports
+# 加入下面配置：
+/root/data/nfs      172.29.98.73/24(rw,no_root_squash)
+# 查看是否配置成功
+more /etc/exports
+```
+
+> systemctl start nfs   在master上启动nfs服务器
+
+创建nfs.yaml配置文件
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-nfs
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  volumes:
+  - name: logs-volume
+    nfs:
+      server: 172.29.98.73  #nfs服务器地址
+      path: /root/data/nfs #共享文件路径
+```
+
+然后执行： kubectl apply -f  nfs.yaml
+
+> 查看是否启动
+
+![1626185524607](k8s.assets/1626185524607.png)
+
+> curl  10.244.2.47     发现搭建成功了。
+
+![1626185590771](k8s.assets/1626185590771.png)
+
+nfs的方式，就算是已经将pod销毁，对应文件还是存在的，而且不管节点重新 部署到哪一台Node,都可以指定nfs的地址和目录来定位到数据。
