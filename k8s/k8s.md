@@ -2057,3 +2057,182 @@ nginx-service    ClusterIP   None         <none>        80/TCP     89s
 tomcat-service   ClusterIP   None         <none>        8080/TCP   89s
 ```
 
+#### 3.6.1、http代理的方式
+
+> 配置文件
+>
+> ```yaml
+> apiVersion: extensions/v1beta1
+> kind: Ingress
+> metadata:
+>   name: igress-http
+>   namespace: dev
+> spec:
+>   rules:
+>   - host: nginx.oddworld.cn
+>     http:
+>       paths:
+>       - path: /
+>         backend:
+>           serviceName: nginx-service
+>           servicePort: 80
+>   - host: tomcat.oddworld.cn
+>     http:
+>       paths:
+>       - path: /
+>         backend:
+>           serviceName: tomcat-service
+>           servicePort: 8080
+> ```
+>
+> 执行：kubectl apply -f http.yaml
+>
+> 查看是否成功：kubectl get ing -n dev
+> NAME          CLASS    HOSTS                                  ADDRESS          PORTS   AGE
+> igress-http   <none>   nginx.oddworld.cn,tomcat.oddworld.cn   10.109.199.132   80      53s
+>
+> **查看对应http方式的端口**：30550
+>
+> kubectl get svc -n ingress-nginx
+> NAME            TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+> ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526/TCP   13h
+>
+> 访问浏览器： http://nginx.oddworld.cn:30550  http://tomcat.oddworld.cn:30550
+
+
+
+#### 3.6.2、https代理的方式
+
+>```
+># 生成证书
+>openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/C=CN/ST=BJ/L=BJ/O=nginx/CN=oddworld.cn"
+>
+># 创建密钥
+>kubectl create secret tls tls-secret --key tls.key --cert tls.crt
+>```
+>
+>
+
+创建配置文件：https.yaml
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-https
+  namespace: dev
+spec:
+  tls:
+    - hosts:
+      - nginx.oddworld.cn
+      - tomcat.oddworld.cn
+      secretName: tls-secret # 指定秘钥,这里用上面生成的密钥
+  rules:
+  - host: nginx.oddworld.cn
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nginx-service
+          servicePort: 80
+  - host: tomcat.oddworld.cn
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: tomcat-service
+          servicePort: 8080
+```
+
+执行：kubectl apply -f  https.yaml
+
+查看是否已经生成：
+
+![image-20210713142332029](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210713142332029.png)
+
+查看https的端口： 31526
+
+```
+kubectl get svc -n ingress-nginx
+NAME            TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526/TCP   15h
+
+```
+
+访问：https://nginx.oddworld.cn:31526   https://tomcat.oddworld.cn:31526
+
+![image-20210713143006423](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210713143006423.png)
+
+### 3.7、数据存储
+
+> 为了持久化对应容器的数据，k8s引入了volume这个概念，它能够被多个容器所共享，而且一些类型的
+>
+> volume能够跟pod的生命周期脱离独立存储。就算pod销毁，数据还是可以存储。
+>
+> **volume类型**
+>
+> - 简单存储： EmptyDir，HostPath, NFS
+> - 高级存储:    PV， PVC
+> - 配置存储:    ConfigMap， Secret
+
+
+
+#### 3.7、EmptyDir
+
+EmptyDir是最基础的volume类型，一个EmptyDir就是一个host的空目录。EmptyDir是在pod被分配Node之后
+
+才创建的,当pod被销毁时，它也会被销毁。它主要用途：
+
+> 用做临时空间
+>
+> 多容器共享
+
+配置文件：emptydir.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-emptydir
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh", "-c", "tail -f /logs/access.log"]
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /logs
+  volumes:
+  - name: logs-volume
+    emptyDir: {}
+```
+
+执行：kubectl apply -f  emptydir.yaml
+
+![image-20210713162933233](./k8s.assets\image-20210713162933233.png)
+
+查看busybox的标准输出：
+
+kubectl logs -f volume-emptydir -n dev  -c  busybox
+
+查看pod的信息：
+
+volume-emptydir                      2/2     Running   0          8m8s   10.244.2.46   k8s-03   <none>           <none>
+
+然后：curl  10.244.2.46:80  
+
+查看标准输出多了一行日志：
+
+![image-20210713163800624](k8s.assets/image-20210713163800624.png)
+
+
+
+#### 3.8、HostPath
