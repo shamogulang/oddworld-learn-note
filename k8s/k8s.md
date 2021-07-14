@@ -1655,13 +1655,83 @@ spec:
 
 ### 3.3、Label
 
+> Label在k8s中主要用来标识资源，可以通过标签选择对应的资源
+>
+> **Label的特点：**
+>
+> - 一个Label会以键值对的形式附加在Node，Service，Pod上
+> - 一个资源对象可以添加多个Label，一个Label可以添加到多个对象中
+> - Label可以在对象定义时添加，也可以在对象生成后添加
+
+Label定义完之后，需要用Label选择器才能选择
+
+**Label selector:**   选择条件可以多个，逗号隔开
+
+>- 等式的方式： name=jeffchan
+>- 集合的方式： name in (jeffchan,caraliu)
+
+创建一个pod:  kubectl run  label-pod --image=nginx  --port=80 -n dev
+
+![image-20210714151638092](k8s.assets/image-20210714151638092.png)
+
+添加标签
+
+> **资源对象已经创建**
+>
+> kubectl label pod label-pod  version=1.0 -n dev
+> pod/label-pod labeled
+>
+> 查看标签：kubectl get pod label-pod -n dev --show-labels
+>
+> ![image-20210714151946009](k8s.assets/image-20210714151946009.png)
+>
+> 通过标签选择： kubectl get pod -l version=1.0 -n dev
+>
+> ```
+> NAME        READY   STATUS    RESTARTS   AGE
+> label-pod   1/1     Running   0          4m26s
+> ```
+>
+> 删除标签：  kubectl label pod label-pod version- -n dev
+>
+> ![image-20210714152258146](k8s.assets/image-20210714152258146.png)
+>
+> 
+>
+> **资源对象还没有创建**
+>
+> 创建pod-label.yaml配置文件
+>
+> ```yaml
+> apiVersion: v1
+> kind: Pod
+> metadata:
+>   name: lable-pod1
+>   namespace: dev
+>   labels:
+>     label1: jeffchan
+>     label2: caraliu
+> spec:
+>   containers:
+>   - image: nginx
+>     name: label-pod1-1
+>     ports:
+>       - containerPort: 80
+>         name: port-name
+>         protocol: TCP
+> ```
+>
+> kubectl apply -f  pod-label.yaml
+>
+> 然后查看： kubectl get pod lable-pod1 -n dev --show-labels
+>
+> ![image-20210714153943635](k8s.assets/image-20210714153943635.png)
 
 
-### 3.4、Deployment
 
 
 
-### 3.5、Service
+### 3.4、Service
 
 首先创建服务：
 
@@ -1764,7 +1834,7 @@ svc-nginx    ClusterIP   10.98.39.83     <none>        80/TCP         7s
 svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   3h8m
 ```
 
-#### 3.5.1、通过文件创建资源
+#### 3.4.1、通过文件创建资源
 
 ##### ClusterIP类型
 
@@ -1934,7 +2004,7 @@ spec:
 
 
 
-### 3.6、Ingress介绍
+### 3.5、Ingress介绍
 
 > 上述能在外网访问的服务中，有NodePort河LoadBalance两种方式
 >
@@ -2057,7 +2127,7 @@ nginx-service    ClusterIP   None         <none>        80/TCP     89s
 tomcat-service   ClusterIP   None         <none>        8080/TCP   89s
 ```
 
-#### 3.6.1、http代理的方式
+#### 3.5.1、http代理的方式
 
 > 配置文件
 >
@@ -2101,7 +2171,7 @@ tomcat-service   ClusterIP   None         <none>        8080/TCP   89s
 
 
 
-#### 3.6.2、https代理的方式
+#### 3.5.2、https代理的方式
 
 >```
 ># 生成证书
@@ -2163,7 +2233,7 @@ ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526
 
 ![image-20210713143006423](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210713143006423.png)
 
-### 3.7、数据存储
+### 3.6、数据存储
 
 > 为了持久化对应容器的数据，k8s引入了volume这个概念，它能够被多个容器所共享，而且一些类型的
 >
@@ -2177,7 +2247,7 @@ ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526
 
 
 
-#### 3.7.1、EmptyDir
+#### 3.6.1、EmptyDir
 
 EmptyDir是最基础的volume类型，一个EmptyDir就是一个host的空目录。EmptyDir是在pod被分配Node之后
 
@@ -2235,7 +2305,7 @@ volume-emptydir                      2/2     Running   0          8m8s   10.244.
 
 
 
-#### 3.7.2、HostPath
+#### 3.6.2、HostPath
 
 EmptyDir中的数据会随着pod的结束而销毁，如果想要将数据存储在主机中，可以使用HostPath。它将Node主机的一个实际目录挂在Pod中，来供容器使用，就算pod销毁了，数据依然可以存在主机上，不会丢失。
 
@@ -2282,7 +2352,7 @@ spec:
 
 
 
-#### 3.7.3、NFS
+#### 3.6.3、NFS
 
 HostPath虽然可以保存数据到主机上，但是如果对应的pod出问题了，再次部署的时候，到了别的节点，那么对应的数据就相当于丢失了。
 
@@ -2352,3 +2422,362 @@ spec:
 ![1626185590771](k8s.assets/1626185590771.png)
 
 nfs的方式，就算是已经将pod销毁，对应文件还是存在的，而且不管节点重新 部署到哪一台Node,都可以指定nfs的地址和目录来定位到数据。
+
+
+
+#### 3.6.4、ConfigMap
+
+> ConfigMap用于存储配置信息
+
+**创建配置文件**：configMap.yaml
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: dev
+data:
+  info: |
+    user:jeffchan  
+    password:caraliu
+```
+
+> 注意：上述的user:jeffchan等不能空格隔开（user: jeffchan有空格会报错）
+
+执行kubectl apply -f configMap.yaml
+
+查看： kubectl get ConfigMap -n dev
+
+```
+NAME               DATA   AGE
+configmap          1      2m51s
+```
+
+创建一个pod并将上述的ConfigMap加进去：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-configmap
+  namespace: dev
+spec:
+  containers:
+  - name: nginx-configmap
+    image: nginx
+    volumeMounts:
+    - name: config
+      mountPath: /configmap/config
+  volumes:
+  - name: config
+    configMap:
+      name: configmap
+```
+
+> 计入到nginx中： kubectl exec -it  pod-configmap -n dev /bin/sh
+
+![image-20210714100951199](k8s.assets/image-20210714100951199.png)
+
+#### 3.6.5、Secret
+
+> Secret和ConfigMap很类似，但是它做了一些编码处理，存的值是经过了base64
+>
+> 加密的值
+
+> echo -n 'jeffchan'  | base64
+>
+> amVmZmNoYW4K
+>
+> 
+>
+> echo -n 'caraliu' | base64
+>
+> Y2FyYWxpdQo=
+
+创建secret.yaml配置文件：
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret
+  namespace: dev
+type: Opaque
+data:
+  user: amVmZmNoYW4K
+  password: Y2FyYWxpdQo=
+```
+
+注意：上述的user:  xxx中间需要一个空格，不然回报错，这个跟ConfigMap刚好相反
+
+**创建secret**
+
+> kubectl apply -f secret.yaml
+
+> 查看secret:  kubectl describe secret secret -n dev
+
+![image-20210714102826079](k8s.assets/image-20210714102826079.png)
+
+
+
+**创建pod-secret.yaml**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-secret
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: config
+      mountPath: /secret/config
+  volumes:
+  - name: config
+    secret：
+      secretName: secret
+```
+
+> 进入到pod容器中： kubectl exec -it  pod-secret -n dev /bin/sh
+
+![image-20210714103623007](k8s.assets/image-20210714103623007.png)
+
+#### 3.6.6、pv和pvc
+
+pv是持久化卷的意思，对底层共享存储的一种抽象
+
+pvc是持久化卷声明，是用户对使用的存储的声明，就是用户对k8s发出资源申请的需求
+
+> 资源配置文件的说明
+>
+> ```
+> apiVersion: v1
+> kind: PersistentVolume
+> metadata:
+>   name: pv
+> spec:
+>   nfs: 存储类型
+>   capacity:  存储能力
+>     storage: 2Gi
+>   accessModes: 访问模式
+>   storageClassName: 存储类别
+>   persistentVolumeReclaimPolicy: 回收策略
+> ```
+
+对应的参数说明：
+
+- 存储类型
+
+  > 底层实际存储的类型，目前实例用的是nfs，不同类型配置会有点差异
+
+- 存储能力
+
+  > 目前只支持存储空间的设置
+
+- 访问模式（注意不同的存储类型支持的访问模式可能不一样）
+
+  > ReadWriteOnce: 读写权限,只能被单个节点挂载
+  >
+  > ReadOnlyMany: 能被多个节点挂载，只能读
+  >
+  > ReadWriteMany:能被多个节点挂载，能读写
+
+- 回收策略
+
+  > 当PV不在被使用之后的处理策略
+  >
+  > - Retain  保留数据，需要管理员手工删除数据
+  > - Recycle 回收数据，清除pv中的数据
+  > - Delete  删除数据，与pv相连的后端存储完成volume的删除，常见于云服务商的云存储服务
+
+- 存储类别
+
+  > pv可以通过storageClassName的参数指定类别
+  >
+  > - 具体指定类别的pv只能与请求了这种类别的pvc绑定
+  > - 没有指定类别的pv只能与没有请求类别的pvc绑定
+
+- 状态
+
+  > pv的生命周期
+  >
+  > - Available  表示可用状态，还没有被绑定
+  > - Bound  表示pv已经被pvc绑定
+  > - Released 表示pvc被删除，但是资源还没被重新声明
+  > - Failed 表示该pv自动回收失败
+
+  
+
+**使用NFS来做存储**
+
+> 准备NFS环境
+>
+> 创建三个目录：`mkdir /root/data/{pv1,pv2,pv3} -p `
+>
+> vim   /etc/exports
+>
+> ```
+> /root/data/pv1     172.29.98.73/24(rw,no_root_squash)
+> /root/data/pv2     172.29.98.73/24(rw,no_root_squash)
+> /root/data/pv3     172.29.98.73/24(rw,no_root_squash)
+> ```
+>
+> 然后重新启动
+>
+> systemctl restart  nfs
+
+
+
+**创建配置文件pv.yaml**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv1
+    server: 172.29.98.73
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv2
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv2
+    server: 172.29.98.73
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv3
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv3
+    server: 172.29.98.73
+```
+
+> kubectl apply -f pv.yaml
+
+![image-20210714114423840](k8s.assets/image-20210714114423840.png)
+
+**查看pv信息：** kubectl get pv -n dev
+
+![image-20210714114505627](k8s.assets/image-20210714114505627.png)
+
+
+
+**创建pvc配置文件**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+      
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc2
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+     
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc3
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+> 上述的pvc会去申请pv，查看申请： kubectl get pvc -n dev
+
+![image-20210714141037235](k8s.assets/image-20210714141037235.png)
+
+查看绑定关系：pvc1 -->  pv3      pvc2 --> pv1         pvc3 --> pv2
+
+> pv的状态变成了bound的状态了：    kubectl get pv -n dev
+
+![image-20210714141203646](k8s.assets/image-20210714141203646.png)
+
+> 创建pod-pvc.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: dev
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh", "-c", "while true; do echo pod >> /root/out.txt; sleep 10; done;"]
+    volumeMounts:
+    - name: volume
+      mountPath: /root/
+  volumes:
+    - name: volume
+      persistentVolumeClaim:
+        claimName: pvc1
+        readOnly: false
+```
+
+> 因为pvc1  --> pv3, 查看pv的配置：pv3 对应的目录为： /root/data/pv3
+
+![image-20210714142502482](k8s.assets/image-20210714142502482.png)
+
+**生命周期**
+
+> pvc和pv是一一对应的关系
+>
+> - 资源供应： 管理员手动创建底层存储和pv
+> - 资源绑定：用户创建pvc, k8s负责根据pvc的声明去寻找pv，并且绑定，在用户定义好pvc后，系统根据pvc对存储资源的请求在已经存在的pv中选择一个满足条件的进行绑定；如果找不到，pvc则会一直处于Pending的状态，知道有一个符合要求的pv为止。pv一旦绑定到某个pvc上就会被独占，不能再与其他pvc进行绑定。
+> - 资源使用：用户可在pod中像volume一样使用pvc,将pvc挂载到容器内的某个路径使用。
+> - 资源释放： 用于删除pvc来释放pv，当存储资源使用完毕后，用户可以删除pvc,与该pvc绑定的pv就会被标记为已释放，但还不能立刻和其他pvc进行绑定，通过之前的pvc写入的数据可能还被留在存储设备上，只有再清除之后pv才能再次使用。
+> - 资源回收：k8s根据pv设置的回收策略进行资源回收，对于pv，管理员可以设置回收策略，用于设置与之绑定的pvc释放资源之后如何处理遗留数据的维妮塔，只有pv的存储空间完成回收，才能供心得pvc绑定使用。
+
