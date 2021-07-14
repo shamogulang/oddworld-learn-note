@@ -1504,6 +1504,8 @@ spec:
 
 
 
+
+
 #### 3.3.1、ReplicaSet
 
 > 保证一定数量的pod运行。该控制器会监控对应的pod，如果出现问题，会进行重启或者重新创建。
@@ -1606,7 +1608,7 @@ spec:
 >
 > 支持发布停止和继续
 
-这里也是通过yaml的方式去构建这个控制器：
+**创建deployment.yaml**
 
 ```yaml
 apiVersion: apps/v1
@@ -1647,9 +1649,42 @@ spec:
 >nginx-deployment-66b6c48dd5-c29dp   1/1     Running   0          6m10s
 >nginx-deployment-66b6c48dd5-jzw9m   1/1     Running   0          6m10s
 
+
+
 **版本更新**：
 
-可以也通过
+> 通过edit的命令：将对应的版本改成1.7.1
+>
+> kubectl edit  deploy nginx-deployment -n dev
+>
+> ![image-20210714163844330](k8s.assets/image-20210714163844330.png)
+>
+> 
+>
+> 通过： kubectl set image deploy nginx-deployment nginx=nginx:1.7.2 -n dev
+> deployment.apps/nginx-deployment image updated
+>
+> ![image-20210714164206578](k8s.assets/image-20210714164206578.png)
+
+
+
+**扩缩容**
+
+>**通过edit方式**
+>
+>kubectl edit  deploy nginx-deployment -n dev
+>
+>
+>
+>**通过scale方式**
+>
+>kubectl scale deploy nginx-deployment  --replicas=2 -n  dev
+>
+>![image-20210714164956100](k8s.assets/image-20210714164956100.png)
+
+
+
+
 
 
 
