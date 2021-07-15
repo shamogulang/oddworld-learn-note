@@ -3297,3 +3297,205 @@ spec:
 > - 资源释放： 用于删除pvc来释放pv，当存储资源使用完毕后，用户可以删除pvc,与该pvc绑定的pv就会被标记为已释放，但还不能立刻和其他pvc进行绑定，通过之前的pvc写入的数据可能还被留在存储设备上，只有再清除之后pv才能再次使用。
 > - 资源回收：k8s根据pv设置的回收策略进行资源回收，对于pv，管理员可以设置回收策略，用于设置与之绑定的pvc释放资源之后如何处理遗留数据的维妮塔，只有pv的存储空间完成回收，才能供心得pvc绑定使用。
 
+
+
+### 4、实战
+
+#### 4.1、安装部署nginx
+
+使用配置文件的方式：nginx.conf
+
+```yaml
+worker_processes  1;
+ 
+{
+	worker_connections  1024;
+}
+
+http{
+ server {
+    listen       80;
+    server_name  127.0.0.1;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+ }
+}
+```
+
+首先创建：
+
+> mkdir  /nfs/data/nginx/html  -p
+>
+> mkdir /nfs/data/nginx/log - p
+>
+> mkdir /nfs/data/nginx/conf -p
+>
+> 并且创建：vim   /nfs/data/nginx/conf/nginx.conf
+>
+> ```
+> {
+> worker_processes  1;
+>  
+> {
+> 	worker_connections  1024;
+> }
+> 
+> http{
+>  server {
+>     listen       80;
+>     server_name  127.0.0.1;
+> 
+>     location / {
+>         root   /usr/share/nginx/html;
+>         index  index.html index.htm;
+>     }
+>  }
+> }
+> ```
+
+修改先前的nfs的配置： vim /etc/ exports
+
+```
+/nfs/data/nginx/html     172.29.98.73/24(rw,no_root_squash)
+/nfs/data/nginx/log     172.29.98.73/24(rw,no_root_squash)
+```
+
+重启nfs:   systemctl restart  nfs
+
+创建命名空间：  kubectl create ns nfs    kubectl create ns prod
+
+创建nginx-pv.yaml
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: html-nfs
+  namespace: nfs
+  labels:
+    pv: html-nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/data/nginx/html
+    server: 172.29.98.73
+    
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: log-nfs
+  namespace: nfs
+  labels:
+    pv: log-nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/data/nginx/log
+    server: 172.29.98.73
+```
+
+
+
+创建pvc.yaml
+
+```yaml
+apiVersion: v1
+kind: PersistenVolumeClaim
+metadata:
+  name: html-pvc
+  namespace: nfs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      pv: html-nfs
+      
+---
+apiVersion: v1
+kind: PersistenVolumeClaim
+metadata:
+  name: log-pvc
+  namespace: nfs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      pv: log-nfs
+```
+
+
+
+创建configmap
+
+kubectl create configmap nginx-config --from-file=/nfs/data/nginx/conf/nginx.conf -n nfs
+
+
+
+创建nginx-pod.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-prod
+  namespace: nfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+     app: nginx-prod
+  template:
+    metadata:
+      labels:
+        app: nginx-prod
+    spec:
+      containers:
+      - name: nginx-prod
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nginx-html
+          subPath: html
+        - mountPath: /var/log/nginx
+          name: nginx-log
+          subPath: log
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-etc
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-html
+        persistentVolumeClaim:
+          claimName: html-pvc
+      - name: nginx-log
+        persistentVolumeClaim:
+          claimName: log-pvc
+      - name: nginx-etc
+        configMap:
+          name: nginx-config
+          items:
+          - key: nginx.conf
+            path: nginx.conf   
+```
+
