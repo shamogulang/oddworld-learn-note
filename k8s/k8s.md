@@ -1651,9 +1651,13 @@ spec:
 
 
 
-**版本更新**：
+**版本升级**：
 
-> 通过edit的命令：将对应的版本改成1.7.1
+> **有两种策略**
+>
+> - 默认是滚动更新：（启动新的Pod，然后关闭一部分Pod）
+>
+>    通过edit的命令：将对应的版本改成1.7.1
 >
 > kubectl edit  deploy nginx-deployment -n dev
 >
@@ -1661,10 +1665,132 @@ spec:
 >
 > 
 >
-> 通过： kubectl set image deploy nginx-deployment nginx=nginx:1.7.2 -n dev
-> deployment.apps/nginx-deployment image updated
+>  kubectl set image deploy nginx-deployment nginx=nginx:1.7.2 -n dev
+> deployment.apps/nginx-deployment image updated     
 >
 > ![image-20210714164206578](k8s.assets/image-20210714164206578.png)
+>
+> **查看版本更新的流程**
+>
+> ![image-20210715102656068](k8s.assets/image-20210715102656068.png)
+>
+> 查看对应的deployment也可以发现，默认是rollAndUpdate的策略
+>
+> ![image-20210715103224286](k8s.assets/image-20210715103224286.png)
+>
+> 修改配置文件，显示指定滚动更新的细节
+>
+> ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 8
+>   strategy:
+>     type: RollingUpdate
+>     rollingUpdate:
+>       maxSurge: 25% 
+>       maxUnavailable: 25%
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+> ```
+>
+> 
+>
+> - 重建更新
+>
+> ​    修改策略为ReCreate：
+>
+>      ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 3
+>   strategy:
+>     type: ReCreate
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+>      ```
+>
+> 启动服务：kubectl  apply -f   xxx.yaml
+>
+> kubectl set image deployment nginx-deployment  nginx=nginx:1.7.1  -n   dev
+>
+> ![image-20210715105412190](k8s.assets/image-20210715105412190.png)
+>
+> 可以发现是全部都杀掉，然后创建新的pod
+>
+> 查看：rs的信息，发现创建了一个新的rs，旧的rs还是保留，但是pod的数量为0，这个主要是为了版本回退的时候，直接使用这个保留的rs
+>
+> ![image-20210715110149833](k8s.assets/image-20210715110149833.png)
+
+
+
+**版本升级的功能**
+
+> kubectl  rollout 命令
+>
+> - status  显示当前升级状态
+> - history 显示升级历史记录
+> - pause  暂停版本升级过程
+> - resume 继续已经暂停的版本升级过程
+> - restart  从其版本升级过程
+> - undo  回滚到上一级版本 （可以使用--to-revision回滚到指定版本）
+
+```yaml
+1、查看版本是否更新成功： kubectl rollout status deployment nginx-deployment -n dev
+deployment "nginx-deployment" successfully rolled out
+
+2、查看版本历史： kubectl rollout history deployment nginx-deployment -n dev 
+deployment.apps/nginx-deployment 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>   # 两条记录，说明更新了一次
+   
+3、回退版本  kubectl rollout undo deployment nginx-deployment --to-revision=1 -n dev
+deployment.apps/nginx-deployment rolled back  # --to-revision可以不要，就是回退上个版本
+```
+
+查看rs:  发现保留的rs变成了3个副本，新的rs的pod副本为0
+
+![image-20210715111912566](k8s.assets/image-20210715111912566.png)
+
+查看版本是否回退：
+
+![image-20210715112154532](k8s.assets/image-20210715112154532.png)
 
 
 
@@ -1685,6 +1811,361 @@ spec:
 
 
 
+
+#### 3.3.3、DaemonSet
+
+DS控制器可以保证集群中的每个Node节点都运行一个副本，一般用于日志收集，节点
+
+监控等场景。
+
+> DS的特点
+>
+> - 每当集群中添加一个节点，指定Pod副本也添加在该节点上
+> - 当节点从集群中移除是，Pod也会被垃圾回收
+
+创建ds.yaml配置文件：
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet      
+metadata:
+  name: pc-daemonset
+  namespace: dev
+spec: 
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+```
+
+发现对应的node节点上都有一个Pod
+
+![image-20210715115539221](k8s.assets/image-20210715115539221.png)
+
+删除也是一样使用： kubectl delete -f  xxx.yaml
+
+
+
+#### 3.3.4、Job
+
+Job控制器用于执行一次性任务
+
+- 当Pod创建执行成功时，会记录成功执行Pod的数量
+- 当成功执行Pod的数量达到指定的数量时，Job将完成执行
+
+Job的资源清单：
+
+```yaml
+apiVersion: batch/v1 # 版本号
+kind: Job # 类型       
+metadata: # 元数据
+  name: # 名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: job
+spec: # 详情描述
+  completions: 1 # 指定job需要成功运行Pods的次数。默认值: 1
+  parallelism: 1 # 指定job在任一时刻应该并发运行Pods的数量。默认值: 1
+  activeDeadlineSeconds: 30 # 指定job可运行的时间期限，超过时间还未结束，系统将会尝试进行终止。
+  backoffLimit: 6 # 指定job失败后进行重试的次数。默认是6
+  manualSelector: true # 是否可以使用selector选择器选择pod，默认是false
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: counter-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [counter-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never # 重启策略只能设置为Never或者OnFailure
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 2;done"]
+```
+
+Job的重启策略
+
+> 1、Never：不管执行的情况怎么样，都无法
+>
+> 2、OnFailure:  失败重启
+>
+> 3、Always： 总是重启，不能设置这种类型，因为Job时一次性的任务
+
+
+
+创建job.yaml
+
+```yaml
+apiVersion: batch/v1
+kind: Job      
+metadata:
+  name: pc-job
+  namespace: dev
+spec:
+  manualSelector: true
+  selector:
+    matchLabels:
+      app: counter-pod
+  template:
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+```
+
+> 查看执行情况：kubectl  get pod -n dev
+>
+> pc-job-vqjp4                        0/1     Completed   0          3m6s
+>
+> 查看job控制器：
+>
+> ![image-20210715144734200](k8s.assets/image-20210715144734200.png)
+>
+> 查看详情：
+>
+> ```yaml
+> [root@k8s-01 pod-controller]# kubectl describe job pc-job -n dev
+> Name:           pc-job
+> Namespace:      dev
+> Selector:       app=counter-pod
+> Labels:         app=counter-pod
+> Annotations:    <none>
+> Parallelism:    1
+> Completions:    1
+> Start Time:     Thu, 15 Jul 2021 14:40:04 +0800
+> Completed At:   Thu, 15 Jul 2021 14:40:33 +0800
+> Duration:       29s
+> Pods Statuses:  0 Running / 1 Succeeded / 0 Failed
+> Pod Template:
+>   Labels:  app=counter-pod
+>   Containers:
+>    counter:
+>     Image:      busybox:1.30
+>     Port:       <none>
+>     Host Port:  <none>
+>     Command:
+>       bin/sh
+>       -c
+>       for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done
+>     Environment:  <none>
+>     Mounts:       <none>
+>   Volumes:        <none>
+> Events:
+>   Type    Reason            Age    From            Message
+>   ----    ------            ----   ----            -------
+>   Normal  SuccessfulCreate  7m49s  job-controller  Created pod: pc-job-vqjp4
+>   Normal  Completed         7m21s  job-controller  Job completed
+> 
+> ```
+>
+> 
+>
+> 再次执行的时候发现：
+>
+> job.batch/pc-job unchanged
+
+
+
+#### 3.4.5、CronJob
+
+CronJob通过借助Job控制器来控制资源，提供cron定时配置来定时的执行Job里面的任务。
+
+CronJob的资源清单
+
+```yaml
+apiVersion: batch/v1beta1 # 版本号
+kind: CronJob # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: cronjob
+spec: # 详情描述
+  schedule: # cron格式的作业调度运行时间点,用于控制任务在什么时间执行
+  concurrencyPolicy: # 并发执行策略，用于定义前一次作业运行尚未完成时是否以及如何运行后一次的作业
+  failedJobHistoryLimit: # 为失败的任务执行保留的历史记录数，默认为1
+  successfulJobHistoryLimit: # 为成功的任务执行保留的历史记录数，默认为3
+  startingDeadlineSeconds: # 启动作业错误的超时时长
+  jobTemplate: # job控制器模板，用于为cronjob控制器生成job对象;下面其实就是job的定义
+    metadata:
+    spec:
+      completions: 1
+      parallelism: 1
+      activeDeadlineSeconds: 30
+      backoffLimit: 6
+      manualSelector: true
+      selector:
+        matchLabels:
+          app: counter-pod
+        matchExpressions: 规则
+          - {key: app, operator: In, values: [counter-pod]}
+      template:
+        metadata:
+          labels:
+            app: counter-pod
+        spec:
+          restartPolicy: Never 
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 20;done"]
+```
+
+> `concurrencyPolicy`
+> 	Allow:   允许Jobs并发运行(默认)
+> 	Forbid:  禁止并发运行，如果上一次运行尚未完成，则跳过下一次运行
+> 	Replace: 替换，取消当前正在运行的作业并用新作业替换它
+
+创建cjob.yaml
+
+```yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: pc-cronjob
+  namespace: dev
+  labels:
+    controller: cronjob
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    metadata:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+```
+
+> 查看：kubectl get pod -n dev  执行完后，pod会标记为completed状态，然后启动一个新的pod
+> NAME                                READY   STATUS      RESTARTS   AGE
+> pc-cronjob-27105540-9xtdx           0/1     Completed   0          83s
+> pc-cronjob-27105541-zx6zw           1/1     Running     0          23s
+>
+> 
+>
+> 查看：kubectl  get cj -n dev -o wide
+>
+> NAME         SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE     CONTAINERS   IMAGES         SELECTOR
+> pc-cronjob   */1 * * * *   False     1        6s              2m19s   counter      busybox:1.30   <none>
+
+
+
+#### 3.4.6、HPA
+
+> HPA控制器是一个可以根据当前服务器一些指标进行动态扩展的控制器，它会根据服务器的负载情况，然后动态的调整pod的副本数量。当负载高的时候增加pod数量，负载不高时就降低pod数量
+
+> 部署HPA时需要metric-server: 上述部署Kuboard的时候，已经部署了这个
+>
+> ![image-20210715151110467](k8s.assets/image-20210715151110467.png)
+
+> **查看Node资源的使用情况**： kubectl top node  
+>
+> NAME     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+> k8s-01   113m         5%     1091Mi          66%       
+> k8s-02   56m          2%     669Mi           40%       
+> k8s-03   107m         5%     521Mi           31% 
+>
+> **查看Pod的资源情况**： kubectl top pod  -n dev
+>
+> nginx-deployment-66b6c48dd5-c4wdx   0m           1Mi             
+> nginx-deployment-66b6c48dd5-f4r5j   0m           1Mi             
+> nginx-deployment-66b6c48dd5-x775b   0m           1Mi             
+> pc-daemonset-b2bjk                  0m           1Mi             
+> pc-daemonset-g5mml                  0m           1Mi 
+
+
+
+> 将上述的Deployment控制器中配置文件的副本书改成1，创建Deployment
+>
+> ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 1
+>   strategy:
+>     type: Recreate
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+>         resources:
+>           requests:
+>             memory: 50Mi
+>             cpu: 50m
+> ```
+>
+> 
+>
+> 将Deployment 暴露：
+>
+> kubectl expose deployment nginx-deployment  --type=NodePort --port=80 -n dev
+
+创建启动hpa.yaml
+
+```yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pc-hpa
+  namespace: dev
+spec:
+  minReplicas: 1  #最小pod数量
+  maxReplicas: 10 #最大pod数量
+  targetCPUUtilizationPercentage: 3 # CPU使用率指标
+  scaleTargetRef:   # 指定要控制的nginx信息
+    apiVersion: apps/v1
+    kind: Deployment  
+    name: nginx-deployment
+
+```
+
+查看hpa的信息，刚开始收集信息需要时间，所以有unknown
+
+![image-20210715161655595](k8s.assets/image-20210715161655595.png)
+
+然后通过压测工具对接口进行压测：
+
+![image-20210715163019690](k8s.assets/image-20210715163019690.png)
+
+> 发现当请求量大的时候，会横向扩展添加pod的数量，最大是设置的10个，当请求下来了之后，过一段时间会主动进行收缩，但是不会马上进行。
+>
+> ```
+> 从 Kubernetes v1.12 版本开始我们可以通过设置 kube-controller-manager 组件的--horizontal-pod-autoscaler-downscale-stabilization 参数来设置一个持续时间，用于指定在当前操作完成后，HPA 必须等待多长时间才能执行另一次缩放操作。默认为5分钟，也就是默认需要等待5分钟后才会开始自动缩放。
+> ```
 
 
 
