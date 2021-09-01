@@ -3501,9 +3501,9 @@ spec:
 
 
 
-#### 4.2、按照部署mysql
+#### 4.2、安装部署mysql
 
-创建pod文件
+> 创建pod文件
 
 ```yaml
 apiVersion: apps/v1
@@ -3530,12 +3530,45 @@ spec:
             - name: MYSQL_ROOT_PASSWORD  #  环境变量名
               value: root  #  环境变量值
             - name: MYSQL_USER
-              value: dbuser
+              value: jeffchan
             - name: MYSQL_PASSWORD
-              value: dbuser
+              value: caraliu
           args: ["--default-authentication-plugin=mysql_native_password"]
           ports:
             - containerPort: 3306 # mysql端口 
               name: mysql 
 ```
 
+
+
+> 创建mysql-service.yaml将服务暴露出去
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+   name: svc-nginx
+   namespace: nfs
+spec:
+   ports:
+   - port: 80
+     protocol: TCP
+     targetPort: 80
+   selector:
+       app: mysql
+   type: NodePort
+```
+
+> 查看mysql的暴露服务： kubectl get svc -n dev
+
+![image-20210716100903689](k8s.assets/image-20210716100903689.png)
+
+> 登录信息
+>
+> ip:  当前节点的外网ip: 8.134.94.208
+>
+> 端口： 31711
+>
+> 用户： root
+>
+> password:   root
