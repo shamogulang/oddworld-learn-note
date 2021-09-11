@@ -1708,3 +1708,153 @@ svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   3h8m
 
 
 
+### 3.6、数据存储
+
+k8s中的容器生命周期很短暂的，数据会随
+
+容器的销毁而丢失。为了持久化容器中的数
+
+据，k8s引入了volume。volume的生命周期
+
+和容器的生命周期不一样，同时它能够被多个容器
+
+所共享。就算容器销毁了，volume中的数据也
+
+不会丢失。
+
+k8s支持多种volume的类型：
+
+>简单存储：EmptyDir  HostPath, NFS
+>
+>高级存储：PV  PVC
+>
+>配置存储：ConfigMap, Secret
+
+#### 3.6.1、简单存储
+
+##### 3.6.1.1、EmptyDir
+
+EmptyDir是最基础的Volume类型，一个EmpyDir就是Host上一个
+
+空目录。这种类型的存储，跟Pod的生命周期挂钩，当Pod被销毁的
+
+时候，这个目录也会被销毁。
+
+> 用途：
+>
+> 临时的存储
+>
+> 一个容器需要从另外一个容器获取数据，多容器共享目录。
+
+
+
+多容器共享目录案例：创建contain-share.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: contain-share
+  namespace: contain-share
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh", "-c", "tail -f  /logs/access.log"]
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /logs
+  volumes:
+  - name: logs-volume
+    emptyDir: {}
+```
+
+执行： kubectl apply -f contain-share.yaml
+
+```shell
+kubectl get pod -n contain-share #查看到两个容器已经起来了。
+NAME            READY   STATUS    RESTARTS   AGE
+contain-share   2/2     Running   0          36s
+```
+
+监控busybox的标准输出： kubectl logs  -f contain-share  -n contain-share  -c busybox
+
+查看：nginx的信息：
+
+```
+kubectl  get pod -n contain-share -o wide
+NAME            READY   STATUS    RESTARTS   AGE     IP            NODE     NOMINATED NODE   READINESS GATES
+contain-share   2/2     Running   0          4m28s   10.244.2.36   k8s-03   <none>           <none>
+
+同时访问：  curl  10.244.2.36:80
+
+查看到监控的busybox输出了：
+10.244.0.0 - - [10/Jul/2021:04:02:38 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.29.0" "-"
+```
+
+
+
+##### 3.6.1.2、HostPath
+
+> HostPath就是将主机中的一个目录挂载到对应的容器中
+
+同样的创建一个配置文件：host-path.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-path
+  namespace: host-path
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh", "-c", "tail -f  /logs/access.log"]
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /logs
+  volumes:
+  - name: logs-volume
+    hostPath: 
+      path: /root/logs
+      type: DirectoryOrCreate  # 表示目录没有就创建：还有Directory, File , FileOrCreate
+```
+
+> 然后启动：kubectl apply -f host-path.yaml
+>
+> 查看： kubectl  get pod -n host-path -o wide  
+>
+> NAME        READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
+> host-path   2/2     Running   0          15s   10.244.2.37   k8s-03   <none>           <none>
+
+发现Pod挂在 k8s-03 ,然后查看： ls   /root/logs/
+
+```
+[root@k8s-03 ~]# ls /root/logs/
+access.log  error.log
+
+先访问ngnix，然后再查看access.log文件，发现由访问日志。
+```
+
+
+
+##### 3.6.1.3、NFS
+
+> hostPath的方式也由可能会出现问题，一旦节点出现问题，重新创建的pod放到了其他节点上了，那么这部分数据也就读取不到了。
+
+可以存储到单独的网络文件存储系统。

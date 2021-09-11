@@ -1,0 +1,1 @@
+beandefination -> bean实例化前 -> bean实例化 -> bean实例化后 -> 属性填充 -> 初始化前 -> 初始化 -> 初始化后 -> bean
