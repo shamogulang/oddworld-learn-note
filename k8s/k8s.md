@@ -60,6 +60,61 @@ spec:
     k8s-app: kubernetes-dashboard
 ```
 
+访问： ip:30009 注意：我这里是用了阿里云的服务器，所以需要打开某些端口的话就要设置一些安全组。
+
+进入到登录的界面提示需要一个token，那么就需要执行下面：
+
+```sh
+kubectl create serviceaccount admin
+kubectl create clusterrolebinding dash-admin --clusterrole=cluster-admin --serviceaccount=default:admin
+secret=$(kubectl get sa admin -o jsonpath='{.secrets[0].name}')
+kubectl get secret $secret -o go-template='{{ .data.token | base64decode }}'
+```
+
+然后拿到对应的token:
+
+```
+eyJhbGciOiJSUzI1NiIsImtpZCI6IkpBVUh0ZE9RSWpiTlU2enZERnludVBBLVdvYUtXNTA3TFZtNmJjcGJVRTAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImFkbWluLXRva2VuLTUyNXg2Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiMzA1YjVjZWQtZGI1ZS00YjliLWFlNWUtMDcyMjQyMjVlMzIyIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6YWRtaW4ifQ.EoyQQugUHaw_4kWxhfU5kprwxz7qo-FYyf7t0MwSvgPhyF5MVl5N9OGirCCkWwq0Z0sKlyA-UWD1-6dgY4nLFAf9F8hXywzEYyGpi0OcuCO0YPmd7bwtPiALwTBRXuqk--CRL2TwL-hmNe3YcaxF49MHeJPfyQ1X1plTnCYnrbBN1QyF9W6_9Y0c68p58WbDNeiVGT7clOng9ZyKsv3ESl0pRYIpuWQIotfQdUbfmk8EC8XOEPK9hdE1vU1ZF38RraZ8uBkD2D-IVPv4R4YhmHmQCF5Xwhohr2YFUZFS7kOS7tZe2cDAhT19I2YZvyD-uw6OksJ65qvMCb4GcE8mQA
+```
+
+然乎便可以进入到界面了
+
+![image-20210709144944148](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210709144944148.png)
+
+
+
+## 3、Kuboard的安装
+
+官网链接：https://kuboard.cn/install/install-dashboard.html#%E5%AE%89%E8%A3%85
+
+> 首先拉取两个配置文件到本地
+>
+> wget https://kuboard.cn/install-script/kuboard.yaml
+>
+> wget  https://addons.kuboard.cn/metrics-server/0.3.7/metrics-server.yaml
+>
+> ```sh
+> kubectl apply -f kuboard.yaml
+> kubectl apply -f metrics-server.yaml
+> ```
+
+在访问之前：看下服务是否已经启动：
+
+![image-20210709150716947](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210709150716947.png)
+
+可以看到正常启动了，接下来要访问：
+
+```
+echo $(kubectl -n kube-system get secret $(kubectl -n kube-system get secret | grep kuboard-user | awk '{print $1}') -o go-template='{{.data.token}}' | base64 -d)
+
+得到对应的token:
+eyJhbGciOiJSUzI1NiIsImtpZCI6IkpBVUh0ZE9RSWpiTlU2enZERnludVBBLVdvYUtXNTA3TFZtNmJjcGJVRTAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJrdWJvYXJkLXVzZXItdG9rZW4tenJtc3IiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoia3Vib2FyZC11c2VyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNjE2ZTMyMDEtYzE1ZC00Njg0LWI4YzEtNWUxZjkzYjE0NDQ0Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Omt1YmUtc3lzdGVtOmt1Ym9hcmQtdXNlciJ9.XqQFPlWRXNj2HLRH_o9jlGeJ6phtnmrZFSSNJLlfL-XFfzCxuhWysYOzSqtNR1jok1yzh18CNTUSbZ6-pqc-IaGHXpMk3gkny6KwSATdjSg0hKY3mDWGlrCKz_nV1m7wmImT8-wrgX_zXIRkHV7QZVWJ4VeekTLmJ_f3WceaKbnIYKZUwhifBVXwY2iU_0VjfQRdDwboBOD8KBABJkBJg1YUfQDU3xFyjSCjgopYzIaZQi_HRSY5w6jejC82do4WxPSyXr_oDWpH78k0K8QtE8QqYOSPypWn7trln_ZhVgsA2OIRp3Vaio5RB2QYYZZgGm7cX1L9jkhysgdzyMhyDQ
+```
+
+然后访问：ip:30009  **注意** 阿里云ECS的服务器需要进行安全组的设置，就是开放端口了。
+
+
+
 
 
 ## 2、kubectl命令
@@ -1435,7 +1490,7 @@ spec:
 >
 > 1、ReplicaSet: 保证定量的pod，可以进行变更
 >
-> 2、Deployment：对ReplicaSet的封装，还支持版本升级和回退
+> 2、Deployment：对ReplicaSet的封装，还支持版本滚动升级和回退，支持发布停止和继续
 >
 > 3、DeamonSet： 每一个node节点都有只有一个pod
 >
@@ -1449,11 +1504,13 @@ spec:
 
 
 
+
+
 #### 3.3.1、ReplicaSet
 
 > 保证一定数量的pod运行。该控制器会监控对应的pod，如果出现问题，会进行重启或者重新创建。
 >
-> 设置对应的配置文件
+> 设置对应的配置文件:  这里会创建三个副本的pod
 >
 > ```yaml
 > apiVersion: apps/v1
@@ -1462,8 +1519,8 @@ spec:
 >   name: nginx-re
 >   labels:
 >     app: nginx
+>   namespace: dev
 > spec:
->   # modify replicas according to your case
 >   replicas: 3
 >   selector:
 >     matchLabels:
@@ -1478,21 +1535,69 @@ spec:
 >         image: nginx
 > ```
 >
-> 
+> 然后执行：kubectl apply -f rs.yaml
+>
+> 然后执行：kubectl get pod -n dev  
+>
+> 结果如下：
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          103s
+> nginx-re-7b6dd   1/1     Running   0          103s
+> nginx-re-lp8w9   1/1     Running   0          103s
+>
+> 查看对应的控制器信息：kubectl get rs -n dev -o wide
+> NAME       DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES   SELECTOR
+> nginx-re   3         3         3       4m53s   nginx        nginx    app=nginx
 
 
 
-#### 3.3.2、Deployment
+**进行扩缩容的方式**：
+
+> 1、直接通过编辑命令进行修改： kubectl edit rs  nginx-re -n dev
+>
+> 然后将对应的副本数修改成：6，这个修改方式跟vim是一样的。
+>
+> 修改保存后查看：kubectl get pod -n dev
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          10m
+> nginx-re-5hvb8   1/1     Running   0          12s
+> nginx-re-7b6dd   1/1     Running   0          10m
+> nginx-re-jvxft   1/1     Running   0          12s
+> nginx-re-kngdk   1/1     Running   0          12s
+> nginx-re-lp8w9   1/1     Running   0          10m
+>
+> 发现现在又6个pod。
+>
+> 2、通过配置文件更新的方式： kubectl scale rs nginx-re --replicas=2 -n dev
+>
+> 然后通过,，发现只剩下两个了：kubectl get pod -n dev
+> NAME             READY   STATUS    RESTARTS   AGE
+> nginx-re-4kjt8   1/1     Running   0          76m
+> nginx-re-7b6dd   1/1     Running   0          76m
 
 
 
+**升级版本**
+
+>1、直接通过编辑命令进行修改： kubectl edit rs  nginx-re -n dev
+>
+>然后进行修改版本，直接退出即可（发现修改了镜像的版本）：  kubectl get rs -n dev -o wide
+>NAME       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES        SELECTOR
+>nginx-re   2         2         2       82m   nginx        nginx:1.7.1   app=nginx
+>
+>
+>
+>2、直接修改：kubectl set image rs nginx-re nginx=nginx:1.7.2  -n dev
+>replicaset.apps/nginx-re image updated
+>
+>然后查看： kubectl get rs -n dev -o wide
+>NAME       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES        SELECTOR
+>nginx-re   2         2         2       84m   nginx        nginx:1.7.2   app=nginx
 
 
-### 3.3、Label
 
+删除控制器可以直接通过:  kubectl delete -f  xxx.yaml文件即可。
 
-
-### 3.4、Deployment
 
 #### 3.4.1、扩缩容器
 
@@ -1602,8 +1707,697 @@ spec:
 从结果可以看出是以下杀死所有的pod,然后重新创建新的三个pod。
 
 
+#### 3.3.2、Deployment
 
-### 3.5、Service
+> deployment是通过控制rs来控制pod的，它包含了所有的rs功能。
+>
+> 支持滚动更新和回退
+>
+> 支持发布停止和继续
+
+**创建deployment.yaml**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: dev
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+>kubectl get deploy -n dev
+>NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+>nginx-deployment   3/3     3            3           3m48s
+>
+>对应的rs(仅仅实在deployment后面加入了一个随机串而已):   kubectl get rs -n dev
+>NAME                          DESIRED   CURRENT   READY   AGE
+>nginx-deployment-66b6c48dd5   3         3         3       5m20s
+>
+>对应的pod(在rs后面加入了一个随机串):   kubectl get pod -n dev
+>NAME                                READY   STATUS    RESTARTS   AGE
+>nginx-deployment-66b6c48dd5-b7dzj   1/1     Running   0          6m9s
+>nginx-deployment-66b6c48dd5-c29dp   1/1     Running   0          6m10s
+>nginx-deployment-66b6c48dd5-jzw9m   1/1     Running   0          6m10s
+
+
+
+**版本升级**：
+
+> **有两种策略**
+>
+> - 默认是滚动更新：（启动新的Pod，然后关闭一部分Pod）
+>
+>    通过edit的命令：将对应的版本改成1.7.1
+>
+> kubectl edit  deploy nginx-deployment -n dev
+>
+> ![image-20210714163844330](k8s.assets/image-20210714163844330.png)
+>
+> 
+>
+>  kubectl set image deploy nginx-deployment nginx=nginx:1.7.2 -n dev
+> deployment.apps/nginx-deployment image updated     
+>
+> ![image-20210714164206578](k8s.assets/image-20210714164206578.png)
+>
+> **查看版本更新的流程**
+>
+> ![image-20210715102656068](k8s.assets/image-20210715102656068.png)
+>
+> 查看对应的deployment也可以发现，默认是rollAndUpdate的策略
+>
+> ![image-20210715103224286](k8s.assets/image-20210715103224286.png)
+>
+> 修改配置文件，显示指定滚动更新的细节
+>
+> ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 8
+>   strategy:
+>     type: RollingUpdate
+>     rollingUpdate:
+>       maxSurge: 25% 
+>       maxUnavailable: 25%
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+> ```
+>
+> 
+>
+> - 重建更新
+>
+> ​    修改策略为ReCreate：
+>
+>      ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 3
+>   strategy:
+>     type: ReCreate
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+>      ```
+>
+> 启动服务：kubectl  apply -f   xxx.yaml
+>
+> kubectl set image deployment nginx-deployment  nginx=nginx:1.7.1  -n   dev
+>
+> ![image-20210715105412190](k8s.assets/image-20210715105412190.png)
+>
+> 可以发现是全部都杀掉，然后创建新的pod
+>
+> 查看：rs的信息，发现创建了一个新的rs，旧的rs还是保留，但是pod的数量为0，这个主要是为了版本回退的时候，直接使用这个保留的rs
+>
+> ![image-20210715110149833](k8s.assets/image-20210715110149833.png)
+
+
+
+**版本升级的功能**
+
+> kubectl  rollout 命令
+>
+> - status  显示当前升级状态
+> - history 显示升级历史记录
+> - pause  暂停版本升级过程
+> - resume 继续已经暂停的版本升级过程
+> - restart  从其版本升级过程
+> - undo  回滚到上一级版本 （可以使用--to-revision回滚到指定版本）
+
+```yaml
+1、查看版本是否更新成功： kubectl rollout status deployment nginx-deployment -n dev
+deployment "nginx-deployment" successfully rolled out
+
+2、查看版本历史： kubectl rollout history deployment nginx-deployment -n dev 
+deployment.apps/nginx-deployment 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>   # 两条记录，说明更新了一次
+   
+3、回退版本  kubectl rollout undo deployment nginx-deployment --to-revision=1 -n dev
+deployment.apps/nginx-deployment rolled back  # --to-revision可以不要，就是回退上个版本
+```
+
+查看rs:  发现保留的rs变成了3个副本，新的rs的pod副本为0
+
+![image-20210715111912566](k8s.assets/image-20210715111912566.png)
+
+查看版本是否回退：
+
+![image-20210715112154532](k8s.assets/image-20210715112154532.png)
+
+
+
+**扩缩容**
+
+>**通过edit方式**
+>
+>kubectl edit  deploy nginx-deployment -n dev
+>
+>
+>
+>**通过scale方式**
+>
+>kubectl scale deploy nginx-deployment  --replicas=2 -n  dev
+>
+>![image-20210714164956100](k8s.assets/image-20210714164956100.png)
+
+
+
+
+
+#### 3.3.3、DaemonSet
+
+DS控制器可以保证集群中的每个Node节点都运行一个副本，一般用于日志收集，节点
+
+监控等场景。
+
+> DS的特点
+>
+> - 每当集群中添加一个节点，指定Pod副本也添加在该节点上
+> - 当节点从集群中移除是，Pod也会被垃圾回收
+
+创建ds.yaml配置文件：
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet      
+metadata:
+  name: pc-daemonset
+  namespace: dev
+spec: 
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+```
+
+发现对应的node节点上都有一个Pod
+
+![image-20210715115539221](k8s.assets/image-20210715115539221.png)
+
+删除也是一样使用： kubectl delete -f  xxx.yaml
+
+
+
+#### 3.3.4、Job
+
+Job控制器用于执行一次性任务
+
+- 当Pod创建执行成功时，会记录成功执行Pod的数量
+- 当成功执行Pod的数量达到指定的数量时，Job将完成执行
+
+Job的资源清单：
+
+```yaml
+apiVersion: batch/v1 # 版本号
+kind: Job # 类型       
+metadata: # 元数据
+  name: # 名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: job
+spec: # 详情描述
+  completions: 1 # 指定job需要成功运行Pods的次数。默认值: 1
+  parallelism: 1 # 指定job在任一时刻应该并发运行Pods的数量。默认值: 1
+  activeDeadlineSeconds: 30 # 指定job可运行的时间期限，超过时间还未结束，系统将会尝试进行终止。
+  backoffLimit: 6 # 指定job失败后进行重试的次数。默认是6
+  manualSelector: true # 是否可以使用selector选择器选择pod，默认是false
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: counter-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [counter-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never # 重启策略只能设置为Never或者OnFailure
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 2;done"]
+```
+
+Job的重启策略
+
+> 1、Never：不管执行的情况怎么样，都无法
+>
+> 2、OnFailure:  失败重启
+>
+> 3、Always： 总是重启，不能设置这种类型，因为Job时一次性的任务
+
+
+
+创建job.yaml
+
+```yaml
+apiVersion: batch/v1
+kind: Job      
+metadata:
+  name: pc-job
+  namespace: dev
+spec:
+  manualSelector: true
+  selector:
+    matchLabels:
+      app: counter-pod
+  template:
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+```
+
+> 查看执行情况：kubectl  get pod -n dev
+>
+> pc-job-vqjp4                        0/1     Completed   0          3m6s
+>
+> 查看job控制器：
+>
+> ![image-20210715144734200](k8s.assets/image-20210715144734200.png)
+>
+> 查看详情：
+>
+> ```yaml
+> [root@k8s-01 pod-controller]# kubectl describe job pc-job -n dev
+> Name:           pc-job
+> Namespace:      dev
+> Selector:       app=counter-pod
+> Labels:         app=counter-pod
+> Annotations:    <none>
+> Parallelism:    1
+> Completions:    1
+> Start Time:     Thu, 15 Jul 2021 14:40:04 +0800
+> Completed At:   Thu, 15 Jul 2021 14:40:33 +0800
+> Duration:       29s
+> Pods Statuses:  0 Running / 1 Succeeded / 0 Failed
+> Pod Template:
+>   Labels:  app=counter-pod
+>   Containers:
+>    counter:
+>     Image:      busybox:1.30
+>     Port:       <none>
+>     Host Port:  <none>
+>     Command:
+>       bin/sh
+>       -c
+>       for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done
+>     Environment:  <none>
+>     Mounts:       <none>
+>   Volumes:        <none>
+> Events:
+>   Type    Reason            Age    From            Message
+>   ----    ------            ----   ----            -------
+>   Normal  SuccessfulCreate  7m49s  job-controller  Created pod: pc-job-vqjp4
+>   Normal  Completed         7m21s  job-controller  Job completed
+> 
+> ```
+>
+> 
+>
+> 再次执行的时候发现：
+>
+> job.batch/pc-job unchanged
+
+
+
+#### 3.4.5、CronJob
+
+CronJob通过借助Job控制器来控制资源，提供cron定时配置来定时的执行Job里面的任务。
+
+CronJob的资源清单
+
+```yaml
+apiVersion: batch/v1beta1 # 版本号
+kind: CronJob # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: cronjob
+spec: # 详情描述
+  schedule: # cron格式的作业调度运行时间点,用于控制任务在什么时间执行
+  concurrencyPolicy: # 并发执行策略，用于定义前一次作业运行尚未完成时是否以及如何运行后一次的作业
+  failedJobHistoryLimit: # 为失败的任务执行保留的历史记录数，默认为1
+  successfulJobHistoryLimit: # 为成功的任务执行保留的历史记录数，默认为3
+  startingDeadlineSeconds: # 启动作业错误的超时时长
+  jobTemplate: # job控制器模板，用于为cronjob控制器生成job对象;下面其实就是job的定义
+    metadata:
+    spec:
+      completions: 1
+      parallelism: 1
+      activeDeadlineSeconds: 30
+      backoffLimit: 6
+      manualSelector: true
+      selector:
+        matchLabels:
+          app: counter-pod
+        matchExpressions: 规则
+          - {key: app, operator: In, values: [counter-pod]}
+      template:
+        metadata:
+          labels:
+            app: counter-pod
+        spec:
+          restartPolicy: Never 
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 20;done"]
+```
+
+> `concurrencyPolicy`
+> 	Allow:   允许Jobs并发运行(默认)
+> 	Forbid:  禁止并发运行，如果上一次运行尚未完成，则跳过下一次运行
+> 	Replace: 替换，取消当前正在运行的作业并用新作业替换它
+
+创建cjob.yaml
+
+```yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: pc-cronjob
+  namespace: dev
+  labels:
+    controller: cronjob
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    metadata:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+```
+
+> 查看：kubectl get pod -n dev  执行完后，pod会标记为completed状态，然后启动一个新的pod
+> NAME                                READY   STATUS      RESTARTS   AGE
+> pc-cronjob-27105540-9xtdx           0/1     Completed   0          83s
+> pc-cronjob-27105541-zx6zw           1/1     Running     0          23s
+>
+> 
+>
+> 查看：kubectl  get cj -n dev -o wide
+>
+> NAME         SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE     CONTAINERS   IMAGES         SELECTOR
+> pc-cronjob   */1 * * * *   False     1        6s              2m19s   counter      busybox:1.30   <none>
+
+
+
+<<<<<<< HEAD
+### 3.6、数据存储
+
+k8s中的容器生命周期很短暂的，数据会随
+
+容器的销毁而丢失。为了持久化容器中的数
+
+据，k8s引入了volume。volume的生命周期
+
+和容器的生命周期不一样，同时它能够被多个容器
+
+所共享。就算容器销毁了，volume中的数据也
+
+不会丢失。
+
+k8s支持多种volume的类型：
+
+>简单存储：EmptyDir  HostPath, NFS
+>
+>高级存储：PV  PVC
+>
+>配置存储：ConfigMap, Secret
+
+#### 3.6.1、简单存储
+
+##### 3.6.1.1、EmptyDir
+
+EmptyDir是最基础的Volume类型，一个EmpyDir就是Host上一个
+
+空目录。这种类型的存储，跟Pod的生命周期挂钩，当Pod被销毁的
+
+时候，这个目录也会被销毁。
+
+> 用途：
+>
+> 临时的存储
+>
+> 一个容器需要从另外一个容器获取数据，多容器共享目录。
+
+
+
+多容器共享目录案例：创建contain-share.yaml
+=======
+#### 3.4.6、HPA
+
+> HPA控制器是一个可以根据当前服务器一些指标进行动态扩展的控制器，它会根据服务器的负载情况，然后动态的调整pod的副本数量。当负载高的时候增加pod数量，负载不高时就降低pod数量
+
+> 部署HPA时需要metric-server: 上述部署Kuboard的时候，已经部署了这个
+>
+> ![image-20210715151110467](k8s.assets/image-20210715151110467.png)
+
+> **查看Node资源的使用情况**： kubectl top node  
+>
+> NAME     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+> k8s-01   113m         5%     1091Mi          66%       
+> k8s-02   56m          2%     669Mi           40%       
+> k8s-03   107m         5%     521Mi           31% 
+>
+> **查看Pod的资源情况**： kubectl top pod  -n dev
+>
+> nginx-deployment-66b6c48dd5-c4wdx   0m           1Mi             
+> nginx-deployment-66b6c48dd5-f4r5j   0m           1Mi             
+> nginx-deployment-66b6c48dd5-x775b   0m           1Mi             
+> pc-daemonset-b2bjk                  0m           1Mi             
+> pc-daemonset-g5mml                  0m           1Mi 
+
+
+
+> 将上述的Deployment控制器中配置文件的副本书改成1，创建Deployment
+>
+> ```yaml
+> apiVersion: apps/v1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+>   namespace: dev
+>   labels:
+>     app: nginx
+> spec:
+>   replicas: 1
+>   strategy:
+>     type: Recreate
+>   selector:
+>   selector:
+>     matchLabels:
+>       app: nginx
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.14.2
+>         ports:
+>         - containerPort: 80
+>         resources:
+>           requests:
+>             memory: 50Mi
+>             cpu: 50m
+> ```
+>
+> 
+>
+> 将Deployment 暴露：
+>
+> kubectl expose deployment nginx-deployment  --type=NodePort --port=80 -n dev
+
+创建启动hpa.yaml
+
+```yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pc-hpa
+  namespace: dev
+spec:
+  minReplicas: 1  #最小pod数量
+  maxReplicas: 10 #最大pod数量
+  targetCPUUtilizationPercentage: 3 # CPU使用率指标
+  scaleTargetRef:   # 指定要控制的nginx信息
+    apiVersion: apps/v1
+    kind: Deployment  
+    name: nginx-deployment
+
+```
+
+查看hpa的信息，刚开始收集信息需要时间，所以有unknown
+
+![image-20210715161655595](k8s.assets/image-20210715161655595.png)
+
+然后通过压测工具对接口进行压测：
+
+![image-20210715163019690](k8s.assets/image-20210715163019690.png)
+
+> 发现当请求量大的时候，会横向扩展添加pod的数量，最大是设置的10个，当请求下来了之后，过一段时间会主动进行收缩，但是不会马上进行。
+>
+> ```
+> 从 Kubernetes v1.12 版本开始我们可以通过设置 kube-controller-manager 组件的--horizontal-pod-autoscaler-downscale-stabilization 参数来设置一个持续时间，用于指定在当前操作完成后，HPA 必须等待多长时间才能执行另一次缩放操作。默认为5分钟，也就是默认需要等待5分钟后才会开始自动缩放。
+> ```
+
+
+
+### 3.3、Label
+
+> Label在k8s中主要用来标识资源，可以通过标签选择对应的资源
+>
+> **Label的特点：**
+>
+> - 一个Label会以键值对的形式附加在Node，Service，Pod上
+> - 一个资源对象可以添加多个Label，一个Label可以添加到多个对象中
+> - Label可以在对象定义时添加，也可以在对象生成后添加
+
+Label定义完之后，需要用Label选择器才能选择
+
+**Label selector:**   选择条件可以多个，逗号隔开
+
+>- 等式的方式： name=jeffchan
+>- 集合的方式： name in (jeffchan,caraliu)
+
+创建一个pod:  kubectl run  label-pod --image=nginx  --port=80 -n dev
+
+![image-20210714151638092](k8s.assets/image-20210714151638092.png)
+
+添加标签
+
+> **资源对象已经创建**
+>
+> kubectl label pod label-pod  version=1.0 -n dev
+> pod/label-pod labeled
+>
+> 查看标签：kubectl get pod label-pod -n dev --show-labels
+>
+> ![image-20210714151946009](k8s.assets/image-20210714151946009.png)
+>
+> 通过标签选择： kubectl get pod -l version=1.0 -n dev
+>
+> ```
+> NAME        READY   STATUS    RESTARTS   AGE
+> label-pod   1/1     Running   0          4m26s
+> ```
+>
+> 删除标签：  kubectl label pod label-pod version- -n dev
+>
+> ![image-20210714152258146](k8s.assets/image-20210714152258146.png)
+>
+> 
+>
+> **资源对象还没有创建**
+>
+> 创建pod-label.yaml配置文件
+>
+> ```yaml
+> apiVersion: v1
+> kind: Pod
+> metadata:
+>   name: lable-pod1
+>   namespace: dev
+>   labels:
+>     label1: jeffchan
+>     label2: caraliu
+> spec:
+>   containers:
+>   - image: nginx
+>     name: label-pod1-1
+>     ports:
+>       - containerPort: 80
+>         name: port-name
+>         protocol: TCP
+> ```
+>
+> kubectl apply -f  pod-label.yaml
+>
+> 然后查看： kubectl get pod lable-pod1 -n dev --show-labels
+>
+> ![image-20210714153943635](k8s.assets/image-20210714153943635.png)
+
+
+
+
+
+### 3.4、Service
 
 首先创建服务：
 
@@ -1706,60 +2500,451 @@ svc-nginx    ClusterIP   10.98.39.83     <none>        80/TCP         7s
 svc-nginx2   NodePort    10.99.236.236   <none>        80:31491/TCP   3h8m
 ```
 
+#### 3.4.1、通过文件创建资源
 
+##### ClusterIP类型
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+  namespace: dev
+spec:
+  selector:
+    app: nginx
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 30000
+      targetPort: 80
+```
+
+创建：kubectl apply -f   service-clusterIP.yaml
+
+> kubectl  get svc -n dev
+>
+> ```
+> NAME      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
+> service   ClusterIP   10.104.1.119   <none>        30000/TCP   20m
+> ```
+
+然后：curl  10.104.1.119:30000  反应出对应的nginx的欢迎界面。
+
+> service的对应的pod信息：(这里通过轮询的机制进行访问对应的pod)
+>
+> ipvsadm -Ln
+>
+> ```
+> TCP  10.104.1.119:30000 rr
+>   -> 10.244.1.34:80               Masq    1      0          0         
+>   -> 10.244.1.35:80               Masq    1      0          0         
+>   -> 10.244.2.39:80               Masq    1      0          0  
+> ```
+
+> 这种模式的一般是集群内的，外部无法访问，所以一般不推荐使用。
+
+进入到对应的pod中修改配置首页的信息：将三个节点的配置文件都修改：
+
+```
+kubectl exec  -it  nginx-deployment-6c74bfd64-jpv2s -n dev  /bin/sh
+
+echo "10.244.1.35" > /usr/share/nginx/html/index.html
+```
+
+然后请求验证轮询的策略：
+
+![image-20210712155114110](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210712155114110.png)
+
+> 查看具体的详情：
+>
+> kubectl describe svc service -n dev
+> Name:              service
+> Namespace:         dev
+> Labels:            <none>
+> Annotations:       <none>
+> Selector:          app=nginx
+> Type:              ClusterIP
+> IP Family Policy:  SingleStack
+> IP Families:       IPv4
+> IP:                10.104.1.119
+> IPs:               10.104.1.119
+> Port:              <unset>  30000/TCP
+> TargetPort:        80/TCP
+> Endpoints:         10.244.1.34:80,10.244.1.35:80,10.244.2.39:80
+> Session Affinity:  None
+> Events:            <none>
+
+这里Endpoints就对应着service需要转发的pod的节点集合。
+
+**Endpoints**
+
+> Endpoints是k8s的资源对象，存储在etcd中，用来记录一个service对应的所有pod的服务地址，它是service中的selector来匹配pod的标签得到的。
+>
+> **查看语句**
+>
+> kubectl get Endpoints  -n dev
+>
+> ```
+> NAME      ENDPOINTS                                      AGE
+> service   10.244.1.34:80,10.244.1.35:80,10.244.2.39:80   94m
+> ```
+
+
+
+**负载均衡策略**
+
+- 如果不指定，默认使用kube-proxy的轮询策略
+- 基于会话的保持模式，会将同一个ip过来的请求，都转发到同一个pod去。需要配置：`sessionAffinity:ClientIP`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+  namespace: dev
+spec:
+  selector:
+    app: nginx
+  type: ClusterIP
+  sessionAffinity: ClientIP # clientIP,默认值为Node
+  ports:
+    - protocol: TCP
+      port: 30000
+      targetPort: 80
+```
+
+> 启动后查看：ipvsadm -Ln
+>
+> `TCP  10.100.240.60:30000 rr persistent 10800
+>   -> 10.244.1.34:80               Masq    1      0          0         
+>   -> 10.244.1.35:80               Masq    1      0          0         
+>   -> 10.244.2.39:80               Masq    1      0          0  `
+
+发现多了 `persistent 10800`,表示持久化的意思，同一个客户端的请求过来会保存一定时间，都请求到同一个pod去。
+
+![image-20210712164345275](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210712164345275.png)
+
+> 查看上述的图片，不再是轮询，而是访问同一个pod
+
+
+
+##### NodePort类型
+
+> 配置文件如下：
+>
+> ```yaml
+> apiVersion: v1
+> kind: Service
+> metadata:
+>   name: service-nodeport
+>   namespace: dev
+> spec:
+>   selector:
+>     app: nginx
+>   type: NodePort # service类型
+>   ports:
+>   - port: 80
+>     nodePort: 9002 # 指定绑定的node的端口(默认的取值范围是：30000-32767)
+>     targetPort: 80
+> ```
+>
+> 这里的端口号给的不合法，会报下面的错误。
+> The Service "service-nodeport" is invalid: spec.ports[0].nodePort: Invalid value: 9002: provided port is not in the valid range. The range of valid ports is 30000-32767
+>
+> 改成30003：但是我需要开放阿里云的这个端口。就是要去配置安全组。
+>
+> 查看是否成功：
+>
+> kubectl get svc -n dev -o wide
+>
+> ```
+> NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE    SELECTOR
+> service            ClusterIP   10.100.240.60   <none>        30000/TCP      5h8m   app=nginx
+> service-nodeport   NodePort    10.96.169.179   <none>        80:30003/TCP   11s    app=nginx
+> ```
+>
+> curl  8.134.94.208:30003  返回数据，也可以通过浏览器访问。如下图返回对应的前面步骤中设置的ip地址
+>
+> ![1626098031462](k8s.assets/1626098031462.png)
+
+
+
+### 3.5、Ingress介绍
+
+> 上述能在外网访问的服务中，有NodePort河LoadBalance两种方式
+>
+> - NodePort: 发现每个service都要占用集群一个端口，当端口很多的时候，不太方便管理
+> - LoadBalance: 每个service都需要一个LB，需要额外的设置支持，很麻烦
+
+Ingress只需要一个NodePort或者LB就可以暴露多个service, Ingress相当于一个七层的负载器，是k8s的一个反向代理。它的原理类似反向代理，它内部可以设置多个规则，然后Ingress Controller监听这些规则并转化成nginx的反向代理设置。从而暴露对应的service。
+
+> 两个核心概念：
+>
+> - Ingress k8s的一个对象，作用如何是定义请求如何转成service的规则。
+> - Ingress controller 具体的负载均衡和反向代理的程序。实现的方式有nginx等。将规则解析，然后进行请求转发。
+
+
+
+**搭建Ingress环境**
+
+```yaml
+# 获取ingress-nginx，本次案例使用的是0.30版本
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/mandatory.yaml
+
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml
+
+
+然后执行： kubectl apply -f ./
+```
+
+查看service和pod：
+
+![1626100196443](k8s.assets/1626100196443.png)
+
+
+
+创建tomcat和nginx的镜像pod实列：
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  namespace: dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tomcat-pod
+  template:
+    metadata:
+      labels:
+        app: tomcat-pod
+    spec:
+      containers:
+      - name: tomcat
+        image: tomcat:8.5-jre10-slim
+        ports:
+        - containerPort: 8080
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  clusterIP: None
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tomcat-service
+  namespace: dev
+spec:
+  selector:
+    app: tomcat-pod
+  clusterIP: None
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+```
+
+kubectl apply -f tomcat-nginx.yaml
+
+```
+kubectl get svc -n dev
+NAME             TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+nginx-service    ClusterIP   None         <none>        80/TCP     89s
+tomcat-service   ClusterIP   None         <none>        8080/TCP   89s
+```
+
+#### 3.5.1、http代理的方式
+
+> 配置文件
+>
+> ```yaml
+> apiVersion: extensions/v1beta1
+> kind: Ingress
+> metadata:
+>   name: igress-http
+>   namespace: dev
+> spec:
+>   rules:
+>   - host: nginx.oddworld.cn
+>     http:
+>       paths:
+>       - path: /
+>         backend:
+>           serviceName: nginx-service
+>           servicePort: 80
+>   - host: tomcat.oddworld.cn
+>     http:
+>       paths:
+>       - path: /
+>         backend:
+>           serviceName: tomcat-service
+>           servicePort: 8080
+> ```
+>
+> 执行：kubectl apply -f http.yaml
+>
+> 查看是否成功：kubectl get ing -n dev
+> NAME          CLASS    HOSTS                                  ADDRESS          PORTS   AGE
+> igress-http   <none>   nginx.oddworld.cn,tomcat.oddworld.cn   10.109.199.132   80      53s
+>
+> **查看对应http方式的端口**：30550
+>
+> kubectl get svc -n ingress-nginx
+> NAME            TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+> ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526/TCP   13h
+>
+> 访问浏览器： http://nginx.oddworld.cn:30550  http://tomcat.oddworld.cn:30550
+
+
+
+#### 3.5.2、https代理的方式
+
+>```
+># 生成证书
+>openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/C=CN/ST=BJ/L=BJ/O=nginx/CN=oddworld.cn"
+>
+># 创建密钥
+>kubectl create secret tls tls-secret --key tls.key --cert tls.crt
+>```
+>
+>
+
+创建配置文件：https.yaml
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-https
+  namespace: dev
+spec:
+  tls:
+    - hosts:
+      - nginx.oddworld.cn
+      - tomcat.oddworld.cn
+      secretName: tls-secret # 指定秘钥,这里用上面生成的密钥
+  rules:
+  - host: nginx.oddworld.cn
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nginx-service
+          servicePort: 80
+  - host: tomcat.oddworld.cn
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: tomcat-service
+          servicePort: 8080
+```
+
+执行：kubectl apply -f  https.yaml
+
+查看是否已经生成：
+
+![image-20210713142332029](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210713142332029.png)
+
+查看https的端口： 31526
+
+```
+kubectl get svc -n ingress-nginx
+NAME            TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx   NodePort   10.109.199.132   <none>        80:30550/TCP,443:31526/TCP   15h
+
+```
+
+访问：https://nginx.oddworld.cn:31526   https://tomcat.oddworld.cn:31526
+
+![image-20210713143006423](D:\my-learning\oddworld-learn-note\k8s\k8s.assets\image-20210713143006423.png)
 
 ### 3.6、数据存储
 
-k8s中的容器生命周期很短暂的，数据会随
-
-容器的销毁而丢失。为了持久化容器中的数
-
-据，k8s引入了volume。volume的生命周期
-
-和容器的生命周期不一样，同时它能够被多个容器
-
-所共享。就算容器销毁了，volume中的数据也
-
-不会丢失。
-
-k8s支持多种volume的类型：
-
->简单存储：EmptyDir  HostPath, NFS
+> 为了持久化对应容器的数据，k8s引入了volume这个概念，它能够被多个容器所共享，而且一些类型的
 >
->高级存储：PV  PVC
+> volume能够跟pod的生命周期脱离独立存储。就算pod销毁，数据还是可以存储。
 >
->配置存储：ConfigMap, Secret
-
-#### 3.6.1、简单存储
-
-##### 3.6.1.1、EmptyDir
-
-EmptyDir是最基础的Volume类型，一个EmpyDir就是Host上一个
-
-空目录。这种类型的存储，跟Pod的生命周期挂钩，当Pod被销毁的
-
-时候，这个目录也会被销毁。
-
-> 用途：
+> **volume类型**
 >
-> 临时的存储
+> - 简单存储： EmptyDir，HostPath, NFS
+> - 高级存储:    PV， PVC
+> - 配置存储:    ConfigMap， Secret
+
+
+
+#### 3.6.1、EmptyDir
+
+EmptyDir是最基础的volume类型，一个EmptyDir就是一个host的空目录。EmptyDir是在pod被分配Node之后
+
+才创建的,当pod被销毁时，它也会被销毁。它主要用途：
+
+> 用做临时空间
 >
-> 一个容器需要从另外一个容器获取数据，多容器共享目录。
+> 多容器共享
 
-
-
-多容器共享目录案例：创建contain-share.yaml
+配置文件：emptydir.yaml
+>>>>>>> 0b680b77f726e83dd1b9393093ac2716e4ab6459
 
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
+<<<<<<< HEAD
   name: contain-share
   namespace: contain-share
 spec:
   containers:
   - name: nginx
     image: nginx:1.17.1
+=======
+  name: volume-emptydir
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+>>>>>>> 0b680b77f726e83dd1b9393093ac2716e4ab6459
     ports:
     - containerPort: 80
     volumeMounts:
@@ -1767,7 +2952,11 @@ spec:
       mountPath: /var/log/nginx
   - name: busybox
     image: busybox:1.30
+<<<<<<< HEAD
     command: ["/bin/sh", "-c", "tail -f  /logs/access.log"]
+=======
+    command: ["/bin/sh", "-c", "tail -f /logs/access.log"]
+>>>>>>> 0b680b77f726e83dd1b9393093ac2716e4ab6459
     volumeMounts:
     - name: logs-volume
       mountPath: /logs
@@ -1776,6 +2965,7 @@ spec:
     emptyDir: {}
 ```
 
+<<<<<<< HEAD
 执行： kubectl apply -f contain-share.yaml
 
 ```shell
@@ -1813,6 +3003,118 @@ kind: Pod
 metadata:
   name: host-path
   namespace: host-path
+=======
+执行：kubectl apply -f  emptydir.yaml
+
+![image-20210713162933233](./k8s.assets\image-20210713162933233.png)
+
+查看busybox的标准输出：
+
+kubectl logs -f volume-emptydir -n dev  -c  busybox
+
+查看pod的信息：
+
+volume-emptydir                      2/2     Running   0          8m8s   10.244.2.46   k8s-03   <none>           <none>
+
+然后：curl  10.244.2.46:80  
+
+查看标准输出多了一行日志：
+
+![image-20210713163800624](k8s.assets/image-20210713163800624.png)
+
+
+
+#### 3.6.2、HostPath
+
+EmptyDir中的数据会随着pod的结束而销毁，如果想要将数据存储在主机中，可以使用HostPath。它将Node主机的一个实际目录挂在Pod中，来供容器使用，就算pod销毁了，数据依然可以存在主机上，不会丢失。
+
+创建hostpath.yaml
+
+​```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-hostpath
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  volumes:
+  - name: logs-volume
+    hostPath: 
+      path: /root/logs
+      type: DirectoryOrCreate # 目录存在就使用，不存在就创建
+```
+
+> 上面的type类型
+>
+> - DirectoryOrCreate  目录存在就用，不存在就创建
+> - Directory  目录必须存在
+> - FileOrCreate  文件存在就用，不存在就创建
+> - File  文件必须存在
+
+  执行：kubectl apply -f   hostpath.yaml
+
+![1626180834190](k8s.assets/1626180834190.png)
+
+然后就curl   10.244.1.43:80
+
+> 到k8s-02这台机器查看日志
+
+![1626181042544](k8s.assets/1626181042544.png)
+
+
+
+#### 3.6.3、NFS
+
+HostPath虽然可以保存数据到主机上，但是如果对应的pod出问题了，再次部署的时候，到了别的节点，那么对应的数据就相当于丢失了。
+
+> NFS是一个网络文件存储系统，可以搭建一台NFS服务器，然后将pod中的存储直接连接到NFS系统，这样的话，无论pod的系欸但怎么转移，只要Node跟NFS能够链接，数据就可以访问。
+
+准备nfs的服务器，为了简单，直接将master节点当作nfs服务器。
+
+> 三台机器都执行一下命令安装nfs的工具
+>
+> yum install nfs-utils -y
+>
+> 准备一个共享目录：
+>
+> mkdir /root/data/nfs -pv
+>
+> chmod +777 /root/data
+>
+> 查看对应的ip： ip addr
+>
+> 我这里是阿里云的服务器，有三台主机，master的内网ip为：
+>
+>  172.29.98.73/20 
+
+```yaml
+# 将共享目录以读写权限暴露给 172.29.98.73/24网段中的所有主机
+vim /etc/exports
+# 加入下面配置：
+/root/data/nfs      172.29.98.73/24(rw,no_root_squash)
+# 查看是否配置成功
+more /etc/exports
+```
+
+> systemctl start nfs   在master上启动nfs服务器
+
+创建nfs.yaml配置文件
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-nfs
+  namespace: dev
+>>>>>>> 0b680b77f726e83dd1b9393093ac2716e4ab6459
 spec:
   containers:
   - name: nginx
@@ -1822,6 +3124,7 @@ spec:
     volumeMounts:
     - name: logs-volume
       mountPath: /var/log/nginx
+<<<<<<< HEAD
   - name: busybox
     image: busybox:1.30
     command: ["/bin/sh", "-c", "tail -f  /logs/access.log"]
@@ -1849,6 +3152,528 @@ spec:
 access.log  error.log
 
 先访问ngnix，然后再查看access.log文件，发现由访问日志。
+=======
+  volumes:
+  - name: logs-volume
+    nfs:
+      server: 172.29.98.73  #nfs服务器地址
+      path: /root/data/nfs #共享文件路径
+```
+
+然后执行： kubectl apply -f  nfs.yaml
+
+> 查看是否启动
+
+![1626185524607](k8s.assets/1626185524607.png)
+
+> curl  10.244.2.47     发现搭建成功了。
+
+![1626185590771](k8s.assets/1626185590771.png)
+
+nfs的方式，就算是已经将pod销毁，对应文件还是存在的，而且不管节点重新 部署到哪一台Node,都可以指定nfs的地址和目录来定位到数据。
+
+
+
+#### 3.6.4、ConfigMap
+
+> ConfigMap用于存储配置信息
+
+**创建配置文件**：configMap.yaml
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: dev
+data:
+  info: |
+    user:jeffchan  
+    password:caraliu
+```
+
+> 注意：上述的user:jeffchan等不能空格隔开（user: jeffchan有空格会报错）
+
+执行kubectl apply -f configMap.yaml
+
+查看： kubectl get ConfigMap -n dev
+
+```
+NAME               DATA   AGE
+configmap          1      2m51s
+```
+
+创建一个pod并将上述的ConfigMap加进去：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-configmap
+  namespace: dev
+spec:
+  containers:
+  - name: nginx-configmap
+    image: nginx
+    volumeMounts:
+    - name: config
+      mountPath: /configmap/config
+  volumes:
+  - name: config
+    configMap:
+      name: configmap
+```
+
+> 计入到nginx中： kubectl exec -it  pod-configmap -n dev /bin/sh
+
+![image-20210714100951199](k8s.assets/image-20210714100951199.png)
+
+#### 3.6.5、Secret
+
+> Secret和ConfigMap很类似，但是它做了一些编码处理，存的值是经过了base64
+>
+> 加密的值
+
+> echo -n 'jeffchan'  | base64
+>
+> amVmZmNoYW4K
+>
+> 
+>
+> echo -n 'caraliu' | base64
+>
+> Y2FyYWxpdQo=
+
+创建secret.yaml配置文件：
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret
+  namespace: dev
+type: Opaque
+data:
+  user: amVmZmNoYW4K
+  password: Y2FyYWxpdQo=
+```
+
+注意：上述的user:  xxx中间需要一个空格，不然回报错，这个跟ConfigMap刚好相反
+
+**创建secret**
+
+> kubectl apply -f secret.yaml
+
+> 查看secret:  kubectl describe secret secret -n dev
+
+![image-20210714102826079](k8s.assets/image-20210714102826079.png)
+
+
+
+**创建pod-secret.yaml**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-secret
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: config
+      mountPath: /secret/config
+  volumes:
+  - name: config
+    secret：
+      secretName: secret
+```
+
+> 进入到pod容器中： kubectl exec -it  pod-secret -n dev /bin/sh
+
+![image-20210714103623007](k8s.assets/image-20210714103623007.png)
+
+#### 3.6.6、pv和pvc
+
+pv是持久化卷的意思，对底层共享存储的一种抽象
+
+pvc是持久化卷声明，是用户对使用的存储的声明，就是用户对k8s发出资源申请的需求
+
+> 资源配置文件的说明
+>
+> ```
+> apiVersion: v1
+> kind: PersistentVolume
+> metadata:
+>   name: pv
+> spec:
+>   nfs: 存储类型
+>   capacity:  存储能力
+>     storage: 2Gi
+>   accessModes: 访问模式
+>   storageClassName: 存储类别
+>   persistentVolumeReclaimPolicy: 回收策略
+> ```
+
+对应的参数说明：
+
+- 存储类型
+
+  > 底层实际存储的类型，目前实例用的是nfs，不同类型配置会有点差异
+
+- 存储能力
+
+  > 目前只支持存储空间的设置
+
+- 访问模式（注意不同的存储类型支持的访问模式可能不一样）
+
+  > ReadWriteOnce: 读写权限,只能被单个节点挂载
+  >
+  > ReadOnlyMany: 能被多个节点挂载，只能读
+  >
+  > ReadWriteMany:能被多个节点挂载，能读写
+
+- 回收策略
+
+  > 当PV不在被使用之后的处理策略
+  >
+  > - Retain  保留数据，需要管理员手工删除数据
+  > - Recycle 回收数据，清除pv中的数据
+  > - Delete  删除数据，与pv相连的后端存储完成volume的删除，常见于云服务商的云存储服务
+
+- 存储类别
+
+  > pv可以通过storageClassName的参数指定类别
+  >
+  > - 具体指定类别的pv只能与请求了这种类别的pvc绑定
+  > - 没有指定类别的pv只能与没有请求类别的pvc绑定
+
+- 状态
+
+  > pv的生命周期
+  >
+  > - Available  表示可用状态，还没有被绑定
+  > - Bound  表示pv已经被pvc绑定
+  > - Released 表示pvc被删除，但是资源还没被重新声明
+  > - Failed 表示该pv自动回收失败
+
+  
+
+**使用NFS来做存储**
+
+> 准备NFS环境
+>
+> 创建三个目录：`mkdir /root/data/{pv1,pv2,pv3} -p `
+>
+> vim   /etc/exports
+>
+> ```
+> /root/data/pv1     172.29.98.73/24(rw,no_root_squash)
+> /root/data/pv2     172.29.98.73/24(rw,no_root_squash)
+> /root/data/pv3     172.29.98.73/24(rw,no_root_squash)
+> ```
+>
+> 然后重新启动
+>
+> systemctl restart  nfs
+
+
+
+**创建配置文件pv.yaml**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv1
+    server: 172.29.98.73
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv2
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv2
+    server: 172.29.98.73
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv3
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /root/data/pv3
+    server: 172.29.98.73
+```
+
+> kubectl apply -f pv.yaml
+
+![image-20210714114423840](k8s.assets/image-20210714114423840.png)
+
+**查看pv信息：** kubectl get pv -n dev
+
+![image-20210714114505627](k8s.assets/image-20210714114505627.png)
+
+
+
+**创建pvc配置文件**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+      
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc2
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+     
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc3
+  namespace: dev
+spec:
+  accessModes: 
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+> 上述的pvc会去申请pv，查看申请： kubectl get pvc -n dev
+
+![image-20210714141037235](k8s.assets/image-20210714141037235.png)
+
+查看绑定关系：pvc1 -->  pv3      pvc2 --> pv1         pvc3 --> pv2
+
+> pv的状态变成了bound的状态了：    kubectl get pv -n dev
+
+![image-20210714141203646](k8s.assets/image-20210714141203646.png)
+
+> 创建pod-pvc.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: dev
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh", "-c", "while true; do echo pod >> /root/out.txt; sleep 10; done;"]
+    volumeMounts:
+    - name: volume
+      mountPath: /root/
+  volumes:
+    - name: volume
+      persistentVolumeClaim:
+        claimName: pvc1
+        readOnly: false
+```
+
+> 因为pvc1  --> pv3, 查看pv的配置：pv3 对应的目录为： /root/data/pv3
+
+![image-20210714142502482](k8s.assets/image-20210714142502482.png)
+
+**生命周期**
+
+> pvc和pv是一一对应的关系
+>
+> - 资源供应： 管理员手动创建底层存储和pv
+> - 资源绑定：用户创建pvc, k8s负责根据pvc的声明去寻找pv，并且绑定，在用户定义好pvc后，系统根据pvc对存储资源的请求在已经存在的pv中选择一个满足条件的进行绑定；如果找不到，pvc则会一直处于Pending的状态，知道有一个符合要求的pv为止。pv一旦绑定到某个pvc上就会被独占，不能再与其他pvc进行绑定。
+> - 资源使用：用户可在pod中像volume一样使用pvc,将pvc挂载到容器内的某个路径使用。
+> - 资源释放： 用于删除pvc来释放pv，当存储资源使用完毕后，用户可以删除pvc,与该pvc绑定的pv就会被标记为已释放，但还不能立刻和其他pvc进行绑定，通过之前的pvc写入的数据可能还被留在存储设备上，只有再清除之后pv才能再次使用。
+> - 资源回收：k8s根据pv设置的回收策略进行资源回收，对于pv，管理员可以设置回收策略，用于设置与之绑定的pvc释放资源之后如何处理遗留数据的维妮塔，只有pv的存储空间完成回收，才能供心得pvc绑定使用。
+
+
+
+### 4、实战
+
+#### 4.1、安装部署nginx
+
+使用配置文件的方式：nginx.conf
+
+```yaml
+worker_processes  1;
+ 
+{
+	worker_connections  1024;
+}
+
+http{
+ server {
+    listen       80;
+    server_name  127.0.0.1;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+ }
+}
+```
+
+首先创建：
+
+> mkdir  /nfs/data/nginx/html  -p
+>
+> mkdir /nfs/data/nginx/log - p
+>
+> mkdir /nfs/data/nginx/conf -p
+>
+> 并且创建：vim   /nfs/data/nginx/conf/nginx.conf
+>
+> ```
+> {
+> worker_processes  1;
+>  
+> {
+> 	worker_connections  1024;
+> }
+> 
+> http{
+>  server {
+>     listen       80;
+>     server_name  127.0.0.1;
+> 
+>     location / {
+>         root   /usr/share/nginx/html;
+>         index  index.html index.htm;
+>     }
+>  }
+> }
+> ```
+
+修改先前的nfs的配置： vim /etc/ exports
+
+```
+/nfs/data/nginx/html     172.29.98.73/24(rw,no_root_squash)
+/nfs/data/nginx/log     172.29.98.73/24(rw,no_root_squash)
+```
+
+重启nfs:   systemctl restart  nfs
+
+创建命名空间：  kubectl create ns nfs    kubectl create ns prod
+
+创建nginx-pv.yaml
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: html-nfs
+  namespace: nfs
+  labels:
+    pv: html-nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/data/nginx/html
+    server: 172.29.98.73
+    
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: log-nfs
+  namespace: nfs
+  labels:
+    pv: log-nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/data/nginx/log
+    server: 172.29.98.73
+```
+
+
+
+创建pvc.yaml
+
+```yaml
+apiVersion: v1
+kind: PersistenVolumeClaim
+metadata:
+  name: html-pvc
+  namespace: nfs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      pv: html-nfs
+      
+---
+apiVersion: v1
+kind: PersistenVolumeClaim
+metadata:
+  name: log-pvc
+  namespace: nfs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      pv: log-nfs
 ```
 
 
@@ -1858,3 +3683,131 @@ access.log  error.log
 > hostPath的方式也由可能会出现问题，一旦节点出现问题，重新创建的pod放到了其他节点上了，那么这部分数据也就读取不到了。
 
 可以存储到单独的网络文件存储系统。
+=======
+创建configmap
+
+kubectl create configmap nginx-config --from-file=/nfs/data/nginx/conf/nginx.conf -n nfs
+
+
+
+创建nginx-pod.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-prod
+  namespace: nfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+     app: nginx-prod
+  template:
+    metadata:
+      labels:
+        app: nginx-prod
+    spec:
+      containers:
+      - name: nginx-prod
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nginx-html
+          subPath: html
+        - mountPath: /var/log/nginx
+          name: nginx-log
+          subPath: log
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-etc
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-html
+        persistentVolumeClaim:
+          claimName: html-pvc
+      - name: nginx-log
+        persistentVolumeClaim:
+          claimName: log-pvc
+      - name: nginx-etc
+        configMap:
+          name: nginx-config
+          items:
+          - key: nginx.conf
+            path: nginx.conf   
+```
+
+
+
+#### 4.2、安装部署mysql
+
+> 创建pod文件
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment  # 类型是部署 
+metadata:
+  name: mysql-deployment  # 对象的名字
+  namespace: dev
+spec:
+  selector:
+    matchLabels:
+      app: mysql #用来绑定label是“mysql”的Pod
+  strategy:
+    type: Recreate
+  template:   # 开始定义Pod 
+    metadata:
+      labels:
+        app: mysql  #Pod的Label，用来标识Pod
+    spec:
+      containers: # 开始定义Pod里面的容器
+        - image: mysql:5.7
+          name: mysql-con
+          imagePullPolicy: Never
+          env:   #  定义环境变量
+            - name: MYSQL_ROOT_PASSWORD  #  环境变量名
+              value: root  #  环境变量值
+            - name: MYSQL_USER
+              value: jeffchan
+            - name: MYSQL_PASSWORD
+              value: caraliu
+          args: ["--default-authentication-plugin=mysql_native_password"]
+          ports:
+            - containerPort: 3306 # mysql端口 
+              name: mysql 
+```
+
+
+
+> 创建mysql-service.yaml将服务暴露出去
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+   name: svc-nginx
+   namespace: nfs
+spec:
+   ports:
+   - port: 80
+     protocol: TCP
+     targetPort: 80
+   selector:
+       app: mysql
+   type: NodePort
+```
+
+> 查看mysql的暴露服务： kubectl get svc -n dev
+
+![image-20210716100903689](k8s.assets/image-20210716100903689.png)
+
+> 登录信息
+>
+> ip:  当前节点的外网ip: 8.134.94.208
+>
+> 端口： 31711
+>
+> 用户： root
+>
+> password:   root
