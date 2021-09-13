@@ -90,8 +90,17 @@ applicationEventMulticaster -> SimpleApplicationEventMulticaster
 
 `Bean的生命周期`
 
-- BeanDefinition的生成
-- ​
+- BeanDefinition
+- BeanDefinition合并
+- 加载类
+- 推断构造方法
+- 实例化
+- BeanDefinition的后置处理
+- 属性填充
+- 执行Aware
+- 初始化前
+- 初始化
+- 初始化后
 
 
 
