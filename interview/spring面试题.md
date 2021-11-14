@@ -128,13 +128,17 @@ public enum Propagation {
 - prototype： 多实例
 - request： 一个请求一个实例
 - session： 一个会话一个实例
-- global session： 感觉像是多个会话同一个实例（但是网上的没看懂）
+- global session：  全局session作用域
 
 
 
 ## 9、spring 的事务隔离级别
 
-
+- DEFAULT: 使用数据库默认的事务隔离级别
+- 读未提交：脏读，不可重复读，幻读
+- 读已提交：不可重复读，幻读
+- 可重复读： 避免脏读和不可重复读，幻读还是有可能发生
+- 串行化： 性能不太好。
 
 
 
@@ -142,23 +146,36 @@ public enum Propagation {
 
 - 切面（aspect）:   可以理解平时我们用@Aspect注解修饰的类就是一个切面
 - 目标对象（targate）: 需要被增强的对象
-- 连接点（JoinPoint）:  程序被拦截的点。spring中因为只能对方法织入，指的是被拦截的方法
+- 连接点（JoinPoint）:  程序被拦截的点。spring中因为只能对方法织入，这里指的是被拦截的方法
 - 切入点（PointCut）:  @PointCut注解定义的就是切入点，切入点就是提供一种规则来匹配连接点。
 - 通知（Advice）: 通知指拦截到连接点之后要执行的代码。
-- 织入 (Weaving):  计入就是将切面和业务逻辑对象链接起来，并创建代理的过程。
-- 增强器（Adviser）:  
+- 织入 (Weaving):  这个其实是目标对象生产代理对象的过程，也就是将需要添加的功能和实际的功能，一起放入到代理对象中，就是个织人的过程。
 
 
 
 ## 11、spring 通知类型有哪些
 
+- 前置通知 @Before:   不管方式是否出现异常，都会执行前置通知。
 
+- 后置通知 @After  发生异常也是会执行。
+
+- 异常通知 @AfterThrowing  后置异常通知，当方法抛出异常的时候，会执行。
+
+- 后置返回通知：@AfterReturning, 当方法抛出异常的时候，不执行。
+
+- 环绕通知 @Around   上述通知的集合，拥有上述所有的功能。
+
+  
 
 ## 12、spring bean的生命周期
+
+BeanDefintion ->  MergeBeanDefinition ->  实例化前 -> 实例化 -> 实例化后 -> 属性填充 ->  init方法前 -> init -> init方法后 -> 返回bean
 
 
 
 ## 13、spring框架中用到什么设计模式
+
+工厂模式IOC容器就是一个大工厂；动态代理，比如AOP和事务的功能；观察者模式：事件功能。
 
 
 
@@ -175,18 +192,60 @@ public enum Propagation {
 
 ## 15、Spring框架中有哪些不同类型的事件，你怎么自定义事件
 
+- 上下文更新事件（ContextRefreshedEvent）：初始化或者更新的时候
+- 上下文开始事件（ContextStartedEvent）： 调用start的时候
+- 上下文停止事件（ContextStoppedEvent）：调用stop的时候
+- 上下文关闭事件（ContextClosedEvent）： 容器关闭的时候
+- 请求处理事件（RequestHandledEvent）:   web运用中，一个请求结束后触发这个事件
+
+自定义的事件很简单，可以直接继承ApplicationEvent，编写需要监听的逻辑，然后实现ApplicationListner，可以泛型绑定前面的Event，可以在重写方法中，通过类型判断来监听实际的事件。
+
+```java
+AnnotationConfigApplicationContext ap
+                = new AnnotationConfigApplicationContext(Config.class);
+        ap.start();
+        ap.stop();
+        ap.close();        
+```
+
+触发事件的结果：
+
+```java
+org.springframework.context.event.ContextRefreshedEvent
+org.springframework.context.event.ContextStartedEvent
+org.springframework.context.event.ContextStoppedEvent
+org.springframework.context.event.ContextClosedEvent
+```
+
+
+
 
 
 ## 16、springmvc的流程
 
+​    MVC：分别代表module、view和controller
+
+- 用户发送请求到dispatcheservlet
+- dispatcherSevlete收到请求后调用HandlerMapping处理映射器
+- 处理映射器找到具体的处理器，生成处理器对象和处理拦截器返回给dispatchServlet
+- dispatchServlet调用HandlerAdapter处理适配器
+- 经过适配调用具体的后端控制器（就是controller了）
+- controller执行业务代码，返回ModelAndView
+- HandlerAdapter将ModelAndView返回给dispatchServlet
+- dipatchServlet将ModelAndView传给试图解析器Viewsolver
+- Viewsolver解析后返回具体的View
+- dipatcherservlet得到view之后进行渲染视图
+- dispatchservlet将响应返回给前端
 
 
-## 15、BeanFactory 和 ApplicationContext有什么区别
+
+## 17、BeanFactory 和 ApplicationContext有什么区别
+
+ApplicationContext实现了BeanFactory接口，拥有BeanFactory所有的功能，同时还提供了资源访问，事件发布，国际化等功能。一般都推荐使用ApplicationContext，因为功能比较齐全。
 
 
 
-## 16、BeanFactory和FactoryBean有什么区别
+## 18、BeanFactory和FactoryBean有什么区别
 
+BeanFactory是一个bean工厂，用来管理bean的，就是IOC容器。FactoryBean是工厂bean,提供一种生成bean的方式
 
-
-## 
